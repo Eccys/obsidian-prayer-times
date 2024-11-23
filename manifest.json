@@ -1,0 +1,10 @@
+{
+	"id": "fetch-prayer-times",
+	"name": "Fetch Prayer Times",
+	"version": "1.0.0",
+	"minAppVersion": "0.15.0",
+	"description": "Fetches local prayer times and saves them to a file.",
+	"author": "Muslim",
+	"authorUrl": "https://ecys.xyz",
+	"isDesktopOnly": false
+}
