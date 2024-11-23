@@ -8,7 +8,10 @@ The Prayer Times Plugin is an Obsidian plugin designed to fetch and display pray
 - **Customizable Time Format**: Display times in either 24-hour or 12-hour format.
 - **Flexible Prayer Time Display**: Choose which prayer times to include in the output.
 - **Date & Location Inclusion**: Optionally include the date and location of the prayer times in the generated output.
-- **Automatic Updates**: The plugin automatically fetches prayer times when the workspace is ready.
+- **Automatic Updates**: The plugin automatically fetches prayer times daily and on vault startup.
+
+## Disclosure
+The plugin must connect to the [Aladhan API](https://aladhan.com/prayer-times-api) in order to get prayer times.
 
 ## Installation
 1. Download the plugin files or clone the repository to your local machine.
