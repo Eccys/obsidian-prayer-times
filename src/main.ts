@@ -1,2 +1,2 @@
-import { PrayerTimesPlugin } from "./prayerTimesPlugin";
+import PrayerTimesPlugin from "./prayerTimesPlugin";
 export default PrayerTimesPlugin;
