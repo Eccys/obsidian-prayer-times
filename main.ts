@@ -1,134 +1,239 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting } from 'obsidian';
+import { Plugin, PluginSettingTab, Setting, Notice } from "obsidian";
 
-// Remember to rename these classes and interfaces!
-
-interface MyPluginSettings {
-	mySetting: string;
+interface PrayerTimesSettings {
+    timeFormat24h: boolean;
+    prayersToInclude: string[];
+    includeDate: boolean;
+    includeLocation: boolean;
+    dateFormat: string;
+    fetchOnLaunch: boolean;
+    fetchOnNoteOpen: boolean; // New setting
 }
 
-const DEFAULT_SETTINGS: MyPluginSettings = {
-	mySetting: 'default'
+const DEFAULT_SETTINGS: PrayerTimesSettings = {
+    timeFormat24h: true,
+    prayersToInclude: ["Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha", "Midnight"],
+    includeDate: true,
+    includeLocation: true,
+    dateFormat: "MM/DD/YYYY",
+    fetchOnLaunch: false,
+    fetchOnNoteOpen: false, // Default to disabled
+};
+
+export default class PrayerTimesPlugin extends Plugin {
+    settings: PrayerTimesSettings;
+
+    async onload() {
+        console.log("Loading Prayer Times Plugin");
+
+        // Load settings
+        await this.loadSettings();
+
+        // Add settings tab
+        this.addSettingTab(new PrayerTimesSettingTab(this.app, this));
+
+        // Automatically fetch prayer times on startup if enabled
+        if (this.settings.fetchOnLaunch) {
+            this.registerEvent(this.app.workspace.on("layout-ready", async () => {
+                await this.fetchAndSavePrayerTimes();
+            }));
+        }
+
+        // Fetch prayer times when the "Prayer Times" note is opened, if enabled
+        if (this.settings.fetchOnNoteOpen) {
+            this.registerEvent(
+                this.app.workspace.on("file-open", async (file) => {
+                    if (file && file.name === "Prayer Times.md") {
+                        await this.fetchAndSavePrayerTimes();
+                    }
+                })
+            );
+        }
+
+        // Add manual command
+        this.addCommand({
+            id: "fetch-prayer-times",
+            name: "Fetch Prayer Times",
+            callback: async () => {
+                await this.fetchAndSavePrayerTimes();
+            },
+        });
+    }
+
+    async fetchAndSavePrayerTimes() {
+        const { prayersToInclude, includeDate, includeLocation, dateFormat, timeFormat24h } = this.settings;
+
+        const city = "New York";
+        const country = "USA";
+
+        const apiUrl = `https://api.aladhan.com/v1/timingsByCity?city=${encodeURIComponent(city)}&country=${encodeURIComponent(country)}&method=2`;
+
+        try {
+            const response = await fetch(apiUrl);
+            if (!response.ok) {
+                throw new Error(`API request failed with status ${response.status}`);
+            }
+
+            const data = await response.json();
+            if (!data || !data.data || !data.data.date) {
+                throw new Error("Invalid data received from API");
+            }
+
+            const rawDate = data.data.date.readable;
+            const formattedDate = window.moment(rawDate, "DD MMM YYYY").format(dateFormat);
+
+            const filteredPrayerTimes = Object.entries(data.data.timings).filter(([key]) =>
+                prayersToInclude.includes(key)
+            );
+
+            const formattedPrayerTimes = filteredPrayerTimes
+                .map(([prayer, time]) => {
+                    const localTime = `${rawDate} ${time}`;
+                    const localDate = new Date(localTime);
+                    const etFormattedTime = localDate.toLocaleTimeString("en-US", {
+                        hour: "numeric",
+                        minute: "2-digit",
+                        hour12: !timeFormat24h,
+                    });
+
+                    const fiveHoursLater = new Date(localDate.getTime() + 5 * 60 * 60 * 1000);
+                    const fiveHoursLaterFormatted = fiveHoursLater.toLocaleTimeString("en-US", {
+                        hour: "numeric",
+                        minute: "2-digit",
+                        hour12: !timeFormat24h,
+                    });
+
+                    return `| ${prayer.padEnd(12)} | ${etFormattedTime.padEnd(8)} | ${fiveHoursLaterFormatted.padEnd(8)} |`;
+                })
+                .join("\n");
+
+            let content = "";
+            if (includeDate) content += `**Date:** ${formattedDate}\n`;
+            if (includeLocation) content += `**Location:** ${city}\n\n`;
+            content += "| Prayer       | Time       | Time (UTC) |\n";
+            content += "|--------------|------------|------------|\n";
+            content += `${formattedPrayerTimes}\n`;
+
+            const filePath = "Prayer Times.md";
+            const vault = this.app.vault;
+            const existingFile = vault.getAbstractFileByPath(filePath);
+
+            if (existingFile) {
+                await vault.modify(existingFile, content);
+            } else {
+                await vault.create(filePath, content);
+            }
+
+            new Notice("Prayer times updated successfully!");
+        } catch (error) {
+            console.error("Failed to fetch prayer times:", error);
+            new Notice("Failed to fetch prayer times. Check the console for details.");
+        }
+    }
+
+    async loadSettings() {
+        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    }
+
+    async saveSettings() {
+        await this.saveData(this.settings);
+    }
+
+    onunload() {
+        console.log("Unloading Prayer Times Plugin");
+    }
 }
 
-export default class MyPlugin extends Plugin {
-	settings: MyPluginSettings;
+class PrayerTimesSettingTab extends PluginSettingTab {
+    plugin: PrayerTimesPlugin;
 
-	async onload() {
-		await this.loadSettings();
+    constructor(app: any, plugin: PrayerTimesPlugin) {
+        super(app, plugin);
+        this.plugin = plugin;
+    }
 
-		// This creates an icon in the left ribbon.
-		const ribbonIconEl = this.addRibbonIcon('dice', 'Sample Plugin', (evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
-		});
-		// Perform additional things with the ribbon
-		ribbonIconEl.addClass('my-plugin-ribbon-class');
+    display(): void {
+        const { containerEl } = this;
+        containerEl.empty();
 
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText('Status Bar Text');
+        new Setting(containerEl)
+            .setName("Fetch on app launch")
+            .setDesc("Automatically fetch prayer times when the app is launched?")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.fetchOnLaunch).onChange(async (value) => {
+                    this.plugin.settings.fetchOnLaunch = value;
+                    await this.plugin.saveSettings();
+                })
+            );
 
-		// This adds a simple command that can be triggered anywhere
-		this.addCommand({
-			id: 'open-sample-modal-simple',
-			name: 'Open sample modal (simple)',
-			callback: () => {
-				new SampleModal(this.app).open();
-			}
-		});
-		// This adds an editor command that can perform some operation on the current editor instance
-		this.addCommand({
-			id: 'sample-editor-command',
-			name: 'Sample editor command',
-			editorCallback: (editor: Editor, view: MarkdownView) => {
-				console.log(editor.getSelection());
-				editor.replaceSelection('Sample Editor Command');
-			}
-		});
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
-		this.addCommand({
-			id: 'open-sample-modal-complex',
-			name: 'Open sample modal (complex)',
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView = this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new SampleModal(this.app).open();
-					}
+        new Setting(containerEl)
+            .setName("Fetch on note open")
+            .setDesc("Automatically fetch prayer times when 'Prayer Times.md' is opened?")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.fetchOnNoteOpen).onChange(async (value) => {
+                    this.plugin.settings.fetchOnNoteOpen = value;
+                    await this.plugin.saveSettings();
+                })
+            );
 
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
-				}
-			}
-		});
+        new Setting(containerEl)
+            .setName("24-hour time format")
+            .setDesc("Display times in 24-hour format?")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.timeFormat24h).onChange(async (value) => {
+                    this.plugin.settings.timeFormat24h = value;
+                    await this.plugin.saveSettings();
+                })
+            );
 
-		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
+        new Setting(containerEl)
+            .setName("Prayers to include")
+            .setDesc("Valid options: Fajr, Sunrise, Dhuhr, Asr, Maghrib, Isha, Midnight")
+            .addTextArea((textArea) =>
+                textArea
+                    .setPlaceholder("e.g., Fajr, Dhuhr, Asr")
+                    .setValue(this.plugin.settings.prayersToInclude.join(", "))
+                    .onChange(async (value) => {
+                        this.plugin.settings.prayersToInclude = value.split(",").map((prayer) => prayer.trim());
+                        await this.plugin.saveSettings();
+                    })
+            );
 
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
-		this.registerDomEvent(document, 'click', (evt: MouseEvent) => {
-			console.log('click', evt);
-		});
+        new Setting(containerEl)
+            .setName("Include date")
+            .setDesc("Include the date in the file?")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.includeDate).onChange(async (value) => {
+                    this.plugin.settings.includeDate = value;
+                    await this.plugin.saveSettings();
+                })
+            );
 
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000));
-	}
+        new Setting(containerEl)
+            .setName("Include location")
+            .setDesc("Include the location in the file?")
+            .addToggle((toggle) =>
+                toggle.setValue(this.plugin.settings.includeLocation).onChange(async (value) => {
+                    this.plugin.settings.includeLocation = value;
+                    await this.plugin.saveSettings();
+                })
+            );
 
-	onunload() {
-
-	}
-
-	async loadSettings() {
-		this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
-	}
-
-	async saveSettings() {
-		await this.saveData(this.settings);
-	}
-}
-
-class SampleModal extends Modal {
-	constructor(app: App) {
-		super(app);
-	}
-
-	onOpen() {
-		const {contentEl} = this;
-		contentEl.setText('Woah!');
-	}
-
-	onClose() {
-		const {contentEl} = this;
-		contentEl.empty();
-	}
-}
-
-class SampleSettingTab extends PluginSettingTab {
-	plugin: MyPlugin;
-
-	constructor(app: App, plugin: MyPlugin) {
-		super(app, plugin);
-		this.plugin = plugin;
-	}
-
-	display(): void {
-		const {containerEl} = this;
-
-		containerEl.empty();
-
-		new Setting(containerEl)
-			.setName('Setting #1')
-			.setDesc('It\'s a secret')
-			.addText(text => text
-				.setPlaceholder('Enter your secret')
-				.setValue(this.plugin.settings.mySetting)
-				.onChange(async (value) => {
-					this.plugin.settings.mySetting = value;
-					await this.plugin.saveSettings();
-				}));
-	}
+        new Setting(containerEl)
+            .setName("Date format")
+            .setDesc("Choose the date format")
+            .addDropdown((dropdown) =>
+                dropdown
+                    .addOptions({
+                        "MM/DD/YYYY": "11/23/2024",
+                        "DD MMM YYYY": "23 Nov 2024",
+                        "YYYY-MM-DD": "2024-11-23",
+                    })
+                    .setValue(this.plugin.settings.dateFormat)
+                    .onChange(async (value) => {
+                        this.plugin.settings.dateFormat = value;
+                        await this.plugin.saveSettings();
+                    })
+            );
+    }
 }
