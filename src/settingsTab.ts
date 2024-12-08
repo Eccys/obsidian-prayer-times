@@ -13,6 +13,38 @@ export default class PrayerTimesSettingTab extends PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty();
 
+        // General settings (no heading)
+        new Setting(containerEl)
+            .setName("Prayers to include")
+            .setDesc("Valid options: Fajr, Sunrise, Dhuhr, Asr, Maghrib, Isha, Midnight")
+            .addTextArea((textArea) =>
+                textArea
+                    .setPlaceholder("e.g., Fajr, Dhuhr, Asr")
+                    .setValue(this.plugin.settings.prayersToInclude.join(", "))
+                    .onChange(async (value) => {
+                        this.plugin.settings.prayersToInclude = value.split(",").map((prayer) => prayer.trim());
+                        await this.plugin.saveSettings();
+                    })
+            );
+
+        new Setting(containerEl)
+            .setName("City")
+            .setDesc("Enter your city.")
+            .addText((text) =>
+                text
+                    .setPlaceholder("e.g., New York")
+                    .setValue(this.plugin.settings.city)
+                    .onChange(async (value) => {
+                        this.plugin.settings.city = value.trim();
+                        await this.plugin.saveSettings();
+                    })
+            );
+
+        // Update Frequency
+        new Setting(containerEl)
+            .setHeading()
+            .setName("Update Frequency");
+
         new Setting(containerEl)
             .setName("Fetch on app launch")
             .setDesc("Automatically fetch prayer times when the app is launched?")
@@ -33,6 +65,11 @@ export default class PrayerTimesSettingTab extends PluginSettingTab {
                 })
             );
 
+        // Note Format
+        new Setting(containerEl)
+            .setHeading()
+            .setName("Note Format");
+
         new Setting(containerEl)
             .setName("24-hour time format")
             .setDesc("Display times in 24-hour format?")
@@ -41,32 +78,6 @@ export default class PrayerTimesSettingTab extends PluginSettingTab {
                     this.plugin.settings.timeFormat24h = value;
                     await this.plugin.saveSettings();
                 })
-            );
-
-        new Setting(containerEl)
-            .setName("Prayers to include")
-            .setDesc("Valid options: Fajr, Sunrise, Dhuhr, Asr, Maghrib, Isha, Midnight")
-            .addTextArea((textArea) =>
-                textArea
-                    .setPlaceholder("e.g., Fajr, Dhuhr, Asr")
-                    .setValue(this.plugin.settings.prayersToInclude.join(", "))
-                    .onChange(async (value) => {
-                        this.plugin.settings.prayersToInclude = value.split(",").map((prayer) => prayer.trim());
-                        await this.plugin.saveSettings();
-                    })
-            );
-
-        new Setting(containerEl)
-            .setName("City")
-            .setDesc("Enter your city")
-            .addText((text) =>
-                text
-                    .setPlaceholder("e.g., New York")
-                    .setValue(this.plugin.settings.city)
-                    .onChange(async (value) => {
-                        this.plugin.settings.city = value.trim();
-                        await this.plugin.saveSettings();
-                    })
             );
 
         new Setting(containerEl)
@@ -91,7 +102,7 @@ export default class PrayerTimesSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Date format")
-            .setDesc("Choose the date format")
+            .setDesc("Choose the date format.")
             .addDropdown((dropdown) =>
                 dropdown
                     .addOptions({
@@ -105,8 +116,9 @@ export default class PrayerTimesSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     })
             );
-		new Setting(containerEl)
-            .setName("Include UTC time")
+
+        new Setting(containerEl)
+            .setName("Include UTC Time")
             .setDesc("Display UTC time next to the local time.")
             .addToggle((toggle) =>
                 toggle
@@ -116,19 +128,20 @@ export default class PrayerTimesSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     })
             );
-			new Setting(containerEl)
-				.setName("Custom UTC offset")
-				.setDesc("Specify the UTC offset to calculate UTC time.")
-				.addDropdown((dropdown) => {
-					for (let i = -12; i <= 14; i++) {
-						const offsetString = i >= 0 ? `+${i}` : `${i}`;
-						dropdown.addOption(i.toString(), `UTC${offsetString}`);
-					}
-					dropdown.setValue(this.plugin.settings.utcOffset.toString())
-						.onChange(async (value) => {
-							this.plugin.settings.utcOffset = parseInt(value);
-							await this.plugin.saveSettings();
-						});
-				});
+
+        new Setting(containerEl)
+            .setName("UTC Offset")
+            .setDesc("Specify the UTC offset to calculate UTC time.")
+            .addDropdown((dropdown) => {
+                for (let i = -12; i <= 14; i++) {
+                    const offsetString = i >= 0 ? `+${i}` : `${i}`;
+                    dropdown.addOption(i.toString(), `UTC${offsetString}`);
+                }
+                dropdown.setValue(this.plugin.settings.utcOffset.toString())
+                    .onChange(async (value) => {
+                        this.plugin.settings.utcOffset = parseInt(value);
+                        await this.plugin.saveSettings();
+                    });
+            });
     }
 }
