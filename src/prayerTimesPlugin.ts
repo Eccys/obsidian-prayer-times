@@ -13,9 +13,9 @@ export default class PrayerTimesPlugin extends Plugin {
         this.addSettingTab(new PrayerTimesSettingTab(this.app, this));
 
         if (this.settings.fetchOnLaunch) {
-            this.registerEvent(this.app.workspace.on("layout-ready", async () => {
+            this.app.workspace.onLayoutReady(async () => {
                 await this.updatePrayerTimes();
-            }));
+            });
         }
 
         if (this.settings.fetchOnNoteOpen) {
@@ -42,11 +42,11 @@ export default class PrayerTimesPlugin extends Plugin {
             const vault = this.app.vault;
             const existingFile = vault.getAbstractFileByPath(filePath);
 
-            if (existingFile) {
-                await vault.modify(existingFile, content);
-            } else {
-                await vault.create(filePath, content);
-            }
+			if (existingFile instanceof TFile) {
+				await vault.modify(existingFile, content);
+			} else {
+				await vault.create(filePath, content);
+			}
 
             new Notice("Prayer times updated successfully!");
         } catch (error) {
