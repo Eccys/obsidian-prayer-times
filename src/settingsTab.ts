@@ -105,5 +105,30 @@ export default class PrayerTimesSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     })
             );
+		new Setting(containerEl)
+            .setName("Include UTC time")
+            .setDesc("Display UTC time next to the local time.")
+            .addToggle((toggle) =>
+                toggle
+                    .setValue(this.plugin.settings.includeUtcTime)
+                    .onChange(async (value) => {
+                        this.plugin.settings.includeUtcTime = value;
+                        await this.plugin.saveSettings();
+                    })
+            );
+			new Setting(containerEl)
+				.setName("Custom UTC offset")
+				.setDesc("Specify the UTC offset to calculate UTC time.")
+				.addDropdown((dropdown) => {
+					for (let i = -12; i <= 14; i++) {
+						const offsetString = i >= 0 ? `+${i}` : `${i}`;
+						dropdown.addOption(i.toString(), `UTC${offsetString}`);
+					}
+					dropdown.setValue(this.plugin.settings.utcOffset.toString())
+						.onChange(async (value) => {
+							this.plugin.settings.utcOffset = parseInt(value);
+							await this.plugin.saveSettings();
+						});
+				});
     }
 }
