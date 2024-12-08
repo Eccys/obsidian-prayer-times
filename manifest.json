@@ -1,0 +1,11 @@
+{
+	"id": "fetch-prayer-times",
+	"name": "Fetch Prayer Times",
+	"version": "1.1.0",
+	"main": "src/main.ts",
+	"minAppVersion": "0.15.0",
+	"description": "Fetches local prayer times and saves them to a file.",
+	"author": "Ecys",
+	"authorUrl": "https://ecys.xyz",
+	"isDesktopOnly": false
+}
