@@ -1,94 +1,83 @@
-# Obsidian Sample Plugin
+# Prayer Times Plugin for Obsidian
 
-This is a sample plugin for Obsidian (https://obsidian.md).
+The Prayer Times Plugin fetches and displays daily prayer times in Obsidian. It uses the Aladhan API to ensure accurate schedules based on your chosen location. Customize the settings to match your preferences, and keep your workspace aligned with your daily schedule.
 
-This project uses TypeScript to provide type checking and documentation.
-The repo depends on the latest plugin API (obsidian.d.ts) in TypeScript Definition format, which contains TSDoc comments describing what it does.
+## Features
 
-This sample plugin demonstrates some of the basic functionality the plugin API can do.
-- Adds a ribbon icon, which shows a Notice when clicked.
-- Adds a command "Open Sample Modal" which opens a Modal.
-- Adds a plugin setting tab to the settings page.
-- Registers a global click event and output 'click' to the console.
-- Registers a global interval which logs 'setInterval' to the console.
+- **Set Location**: Choose your city manually or allow automatic detection.
+- **Prayer Selection**: Pick which prayer times (e.g., Fajr, Dhuhr) to display.
+- **Update Options**: Set updates to occur on vault startup, note opening, or both.
+- **Custom Date Formats**: Format dates to fit your style (e.g., MM/DD/YYYY).
+- **Time Formats**: Switch between 12-hour and 24-hour formats.
+- **Clean Interface**: Simple and easy-to-use settings.
 
-## First time developing plugins?
+## Installation
 
-Quick starting guide for new plugin devs:
+1. Download the plugin files or clone the repository.
+2. Copy the files to your Obsidian `plugins` folder, usually located in `.obsidian/plugins` inside your vault.
+3. Open Obsidian, then go to `Settings > Community Plugins`.
+4. Enable the **Prayer Times Plugin**.
 
-- Check if [someone already developed a plugin for what you want](https://obsidian.md/plugins)! There might be an existing plugin similar enough that you can partner up with.
-- Make a copy of this repo as a template with the "Use this template" button (login to GitHub if you don't see it).
-- Clone your repo to a local development folder. For convenience, you can place this folder in your `.obsidian/plugins/your-plugin-name` folder.
-- Install NodeJS, then run `npm i` in the command line under your repo folder.
-- Run `npm run dev` to compile your plugin from `main.ts` to `main.js`.
-- Make changes to `main.ts` (or create new `.ts` files). Those changes should be automatically compiled into `main.js`.
-- Reload Obsidian to load the new version of your plugin.
-- Enable plugin in settings window.
-- For updates to the Obsidian API run `npm update` in the command line under your repo folder.
+## Configuration
 
-## Releasing new releases
+After enabling the plugin, configure the settings via `Settings > Prayer Times`:
 
-- Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
-- Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`. See here for an example: https://github.com/obsidianmd/obsidian-sample-plugin/releases
-- Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments. Note: The manifest.json file must be in two places, first the root path of your repository and also in the release.
-- Publish the release.
+- **City**: Select your city to fetch accurate prayer times.
+- **Prayers to Include**: Choose specific prayers to display (e.g., Fajr, Maghrib).
+- **Update Frequency**: Specify if updates should happen on startup, note opening, or both.
+- **Time Format**: Switch between 12-hour or 24-hour formats.
+- **Date Format**: Customize how dates are displayed.
 
-> You can simplify the version bump process by running `npm version patch`, `npm version minor` or `npm version major` after updating `minAppVersion` manually in `manifest.json`.
-> The command will bump version in `manifest.json` and `package.json`, and add the entry for the new version to `versions.json`
+## Usage
 
-## Adding your plugin to the community plugin list
+1. Open the settings and configure your preferences.
+2. Save the settings. The plugin will automatically fetch and display prayer times.
+3. Use the `Prayer Times` section in your workspace to view the schedule.
 
-- Check the [plugin guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines).
-- Publish an initial version.
-- Make sure you have a `README.md` file in the root of your repo.
-- Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin.
+### Example Output
 
-## How to use
+**Date**: 12/08/2024  **Location**: New York
 
-- Clone this repo.
-- Make sure your NodeJS is at least v16 (`node --version`).
-- `npm i` or `yarn` to install dependencies.
-- `npm run dev` to start compilation in watch mode.
+| Prayer   | Local Time | Time (UTC) |
+|----------|------------|------------|
+| Fajr     | 05:00 AM   | 10:00 AM   |
+| Dhuhr    | 12:15 PM   | 05:15 PM   |
+| Asr      | 03:45 PM   | 08:45 PM   |
+| Maghrib  | 06:10 PM   | 11:10 PM   |
+| Isha     | 07:30 PM   | 12:30 AM   |
 
-## Manually installing the plugin
+## Development
 
-- Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
+### File Overview
 
-## Improve code quality with eslint (optional)
-- [ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code. 
-- To use eslint with this project, make sure to install eslint from terminal:
-  - `npm install -g eslint`
-- To use eslint to analyze this project use this command:
-  - `eslint main.ts`
-  - eslint will then create a report with suggestions for code improvement by file and line number.
-- If your source code is in a folder, such as `src`, you can use eslint with this command to analyze all files in that folder:
-  - `eslint .\src\`
+- **`apiHandler.ts`**: Handles requests to the Aladhan API.
+- **`settingsTab.ts`**: Implements the settings UI.
+- **`settings.ts`**: Manages and stores plugin settings.
+- **`main.ts`**: Initializes and integrates the plugin into Obsidian.
+- **`prayerTimesPlugin.ts`**: Contains the core logic for fetching and displaying prayer times.
 
-## Funding URL
+### Build and Test
 
-You can include funding URLs where people who use your plugin can financially support it.
+1. Install [Node.js](https://nodejs.org/) and [TypeScript](https://www.typescriptlang.org/).
+2. Clone or extract the plugin files to a folder.
+3. Run `npm install` to set up dependencies.
+4. Build the plugin with `npm run build`.
+5. Copy the built files to the Obsidian plugins folder.
+6. Test the plugin in Obsidian to ensure proper functionality.
 
-The simple way is to set the `fundingUrl` field to your link in your `manifest.json` file:
+## Contributing
 
-```json
-{
-    "fundingUrl": "https://buymeacoffee.com"
-}
-```
+Contributions are welcome. Fork the repository, make your changes, and submit a pull request.
 
-If you have multiple URLs, you can also do:
+## License
 
-```json
-{
-    "fundingUrl": {
-        "Buy Me a Coffee": "https://buymeacoffee.com",
-        "GitHub Sponsor": "https://github.com/sponsors",
-        "Patreon": "https://www.patreon.com/"
-    }
-}
-```
+This plugin is released under the [MIT License](LICENSE).
 
-## API Documentation
+## Acknowledgments
 
-See https://github.com/obsidianmd/obsidian-api
+This plugin connects to the Aladhan API to retrieve prayer times. Thank you to the Aladhan team for providing this valuable service.
+
+---
+
+If you encounter any issues or have suggestions, please contact the developer.
+
