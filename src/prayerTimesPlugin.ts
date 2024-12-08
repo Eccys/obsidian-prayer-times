@@ -1,4 +1,4 @@
-import { Plugin } from "obsidian";
+import { Plugin, TFile } from "obsidian";
 import { PrayerTimesSettings, DEFAULT_SETTINGS } from "./settings";
 import PrayerTimesSettingTab from "./settingsTab";
 import { fetchPrayerTimes } from "./apiHandler";
