@@ -7,6 +7,8 @@ export interface PrayerTimesSettings {
     fetchOnLaunch: boolean;
     fetchOnNoteOpen: boolean;
     city: string;
+    includeUtcTime: boolean;
+	utcOffset: number;
 }
 
 export const DEFAULT_SETTINGS: PrayerTimesSettings = {
@@ -18,5 +20,7 @@ export const DEFAULT_SETTINGS: PrayerTimesSettings = {
     fetchOnLaunch: false,
     fetchOnNoteOpen: false,
     city: "New York",
+	includeUtcTime: false,
+    utcOffset: 0,
 };
 
