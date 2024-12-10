@@ -13,11 +13,11 @@ export async function fetchPrayerTimes(settings: PrayerTimesSettings): Promise<s
     } = settings;
 
     const apiUrl = `https://api.aladhan.com/v1/timingsByCity?city=${encodeURIComponent(city)}&country=&method=2`;
-    const response = await fetch(apiUrl);
-    if (!response.ok) throw new Error(`API request failed with status ${response.status}`);
+	const response = await requestUrl({ url: apiUrl });
+	if (response.status !== 200) throw new Error(`API request failed with status ${response.status}`);
 
-    const data = await response.json();
-    if (!data || !data.data || !data.data.date) throw new Error("Invalid data received from API");
+	const data = response.json; 
+	if (!data || !data.data || !data.data.date) throw new Error("Invalid data received from API");
 
     const rawDate = data.data.date.readable;
     const formattedDate = window.moment(rawDate, "DD MMM YYYY").format(dateFormat);
