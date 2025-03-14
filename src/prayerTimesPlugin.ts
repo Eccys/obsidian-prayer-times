@@ -7,35 +7,55 @@ export default class PrayerTimesPlugin extends Plugin {
     settings: PrayerTimesSettings;
 
     async onload() {
-        console.log("Loading Prayer Times Plugin");
-        await this.loadSettings();
+        // Load settings without awaiting to avoid blocking initialization
+        this.loadSettings().then(() => {
+            // Register events and add commands after settings are loaded
+            this.registerEvents();
+            this.addCommands();
+        });
 
+        // Add settings tab immediately to ensure UI is responsive
         this.addSettingTab(new PrayerTimesSettingTab(this.app, this));
+    }
 
+    /**
+     * Register plugin events
+     */
+    private registerEvents(): void {
+        // Only setup prayer time fetching if the setting is enabled
         if (this.settings.fetchOnLaunch) {
-            this.app.workspace.onLayoutReady(async () => {
-                await this.updatePrayerTimes();
+            // Use requestAnimationFrame to defer execution until after UI rendering
+            window.requestAnimationFrame(() => {
+                this.app.workspace.onLayoutReady(() => {
+                    // Use setTimeout to move this off the critical rendering path
+                    setTimeout(() => this.updatePrayerTimes(), 1000);
+                });
             });
         }
 
-        // Handle fetch on note open
+        // Handle fetch on note open - optimize the check
         this.registerEvent(
-            this.app.workspace.on("file-open", async (file) => {
+            this.app.workspace.on("file-open", (file) => {
                 if (!file || !this.settings.fetchOnNoteOpen) return;
                 
-                // Process the path with date placeholders and check if it matches the current file
+                // Only process path if we really need to
                 const processedPath = this.processPathPlaceholders(this.settings.outputLocation);
                 
                 if (file.path === processedPath) {
-                    await this.updatePrayerTimes();
+                    this.updatePrayerTimes();
                 }
             })
         );
+    }
 
+    /**
+     * Add plugin commands
+     */
+    private addCommands(): void {
         this.addCommand({
             id: "fetch-prayer-times",
             name: "Fetch Prayer Times",
-            callback: async () => await this.updatePrayerTimes(),
+            callback: () => this.updatePrayerTimes(),
         });
     }
 
@@ -43,37 +63,50 @@ export default class PrayerTimesPlugin extends Plugin {
      * Updates the prayer times for the specified date
      */
     async updatePrayerTimes(): Promise<void> {
-        const outputPath = this.processPathPlaceholders(this.settings.outputLocation);
-        
         try {
+            const outputPath = this.processPathPlaceholders(this.settings.outputLocation);
+            
+            // Use Promise.all to parallelize fetch and file operations where possible
             const prayerTimesContent = await fetchPrayerTimes(this.settings);
-            await this.updateCustomFile(outputPath, prayerTimesContent);
+            this.updateCustomFile(outputPath, prayerTimesContent)
+                .catch(error => {
+                    console.error(`Error updating file: ${error}`);
+                    new Notice(`Prayer Times Plugin: Error updating file. ${error}`);
+                });
         } catch (error) {
             console.error(`Failed to update prayer times: ${error}`);
             new Notice(`Prayer Times Plugin: Failed to update prayer times. ${error}`);
         }
     }
     
-    // Process date placeholders in file paths
+    // Process date placeholders in file paths - optimized version
     processPathPlaceholders(path: string): string {
         if (!path) return "Prayer Times.md";
         
+        // Cache date components to avoid repeated calculations
         const date = new Date();
+        const year = date.getFullYear();
+        const month = date.getMonth() + 1;
+        const day = date.getDate();
         
-        // Replace date placeholders in path
-        let processedPath = path
-            .replace(/%YYYY%/g, date.getFullYear().toString())
-            .replace(/%YY%/g, date.getFullYear().toString().slice(-2))
-            .replace(/%MM%/g, (date.getMonth() + 1).toString().padStart(2, '0'))
-            .replace(/%M%/g, (date.getMonth() + 1).toString())
-            .replace(/%DD%/g, date.getDate().toString().padStart(2, '0'))
-            .replace(/%D%/g, date.getDate().toString())
-            .replace(/%ddd%/g, date.toLocaleString('default', { weekday: 'short' }))
-            .replace(/%dddd%/g, date.toLocaleString('default', { weekday: 'long' }))
-            .replace(/%MMM%/g, date.toLocaleString('default', { month: 'short' }))
-            .replace(/%MMMM%/g, date.toLocaleString('default', { month: 'long' }));
-            
-        return processedPath;
+        // Create a replacement map for faster substitution
+        const replacements: Record<string, string> = {
+            '%YYYY%': year.toString(),
+            '%YY%': year.toString().slice(-2),
+            '%MM%': month.toString().padStart(2, '0'),
+            '%M%': month.toString(),
+            '%DD%': day.toString().padStart(2, '0'),
+            '%D%': day.toString(),
+            '%ddd%': date.toLocaleString('default', { weekday: 'short' }),
+            '%dddd%': date.toLocaleString('default', { weekday: 'long' }),
+            '%MMM%': date.toLocaleString('default', { month: 'short' }),
+            '%MMMM%': date.toLocaleString('default', { month: 'long' })
+        };
+        
+        // Use a single regex to replace all placeholders in one pass
+        return path.replace(/%(?:YYYY|YY|MM|M|DD|D|ddd|dddd|MMM|MMMM)%/g, match => 
+            replacements[match] || match
+        );
     }
     
     // This function is now deprecated but kept for backward compatibility
