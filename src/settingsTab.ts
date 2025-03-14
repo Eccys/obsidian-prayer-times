@@ -112,7 +112,46 @@ export default class PrayerTimesSettingTab extends PluginSettingTab {
                 })
             );
 
-        // Template and Formatting Settings
+        // Output Configuration - Now placed above template and formatting
+        new Setting(containerEl)
+            .setHeading()
+            .setName("Output");
+
+        new Setting(containerEl)
+            .setName("Output Location")
+            .setDesc("File path for prayer times. Supports date placeholders.")
+            .addText((text) =>
+                text
+                    .setPlaceholder("Prayer Times.md or Notes/%YYYY%/%MM%/Prayer Times %YYYY%-%MM%-%DD%.md")
+                    .setValue(this.plugin.settings.outputLocation)
+                    .onChange(async (value) => {
+                        const newValue = value.trim();
+                        this.plugin.settings.outputLocation = newValue;
+                        await this.plugin.saveSettings();
+                    })
+            );
+
+        // Add path placeholder help
+        new Setting(containerEl)
+            .setName("Path Placeholders")
+            .setDesc(`
+Available placeholders for file paths:
+
+%YYYY% — Full year (2024)
+%YY% — Short year (24)
+%MM% — Month with leading zero (01-12)
+%M% — Month without leading zero (1-12)
+%DD% — Day with leading zero (01-31)
+%D% — Day without leading zero (1-31)
+%MMM% — Month abbreviation (Jan)
+%MMMM% — Full month name (January)
+%ddd% — Day abbreviation (Mon)
+%dddd% — Full day name (Monday)
+
+Example: Notes/%YYYY%/%MM%/Prayer Times %YYYY%-%MM%-%DD%.md
+            `);
+
+        // Template and Formatting - Moved after output configuration
         new Setting(containerEl)
             .setHeading()
             .setName("Template and Formatting");
@@ -135,140 +174,8 @@ export default class PrayerTimesSettingTab extends PluginSettingTab {
                         this.display();
                     });
             });
-        
-        // 24-hour time format toggle
-        new Setting(containerEl)
-            .setName("Use 24-hour Time Format")
-            .setDesc("Display times in 24-hour format instead of AM/PM")
-            .addToggle((toggle) => {
-                toggle
-                    .setValue(this.plugin.settings.use24HourFormat)
-                    .onChange(async (value) => {
-                        this.plugin.settings.use24HourFormat = value;
-                        await this.plugin.saveSettings();
-                    });
-            });
-        
-        // Show date toggle
-        new Setting(containerEl)
-            .setName("Show Date")
-            .setDesc("Display the date in the header")
-            .addToggle((toggle) => {
-                toggle
-                    .setValue(this.plugin.settings.showDate)
-                    .onChange(async (value) => {
-                        this.plugin.settings.showDate = value;
-                        await this.plugin.saveSettings();
-                    });
-            });
-        
-        // Show location toggle
-        new Setting(containerEl)
-            .setName("Show Location")
-            .setDesc("Display the location in the header")
-            .addToggle((toggle) => {
-                toggle
-                    .setValue(this.plugin.settings.showLocation)
-                    .onChange(async (value) => {
-                        this.plugin.settings.showLocation = value;
-                        await this.plugin.saveSettings();
-                    });
-            });
 
-        // Show UTC time toggle
-        new Setting(containerEl)
-            .setName("Show UTC Time")
-            .setDesc("Include UTC time column in table or after regular time")
-            .addToggle((toggle) => {
-                toggle
-                    .setValue(this.plugin.settings.includeUtcTime)
-                    .onChange(async (value) => {
-                        this.plugin.settings.includeUtcTime = value;
-                        await this.plugin.saveSettings();
-                        // Refresh to show/hide UTC offset setting
-                        this.display();
-                    });
-            });
-
-        // Only show UTC offset if UTC time is enabled
-        if (this.plugin.settings.includeUtcTime) {
-            new Setting(containerEl)
-                .setName("UTC Offset")
-                .setDesc("Specify the UTC offset to calculate UTC time")
-                .addDropdown((dropdown) => {
-                    for (let i = -12; i <= 14; i++) {
-                        const offsetString = i >= 0 ? `+${i}` : `${i}`;
-                        dropdown.addOption(i.toString(), `UTC${offsetString}`);
-                    }
-                    dropdown.setValue(this.plugin.settings.utcOffset.toString())
-                        .onChange(async (value) => {
-                            this.plugin.settings.utcOffset = parseInt(value);
-                            await this.plugin.saveSettings();
-                        });
-                });
-        }
-
-        // Output Configuration
-        new Setting(containerEl)
-            .setHeading()
-            .setName("Output Configuration");
-
-        new Setting(containerEl)
-            .setName("Output Location")
-            .setDesc("File path for prayer times. Supports date placeholders: %YYYY%, %MM%, %DD%, etc.")
-            .addText((text) =>
-                text
-                    .setPlaceholder("Prayer Times.md or Notes/%YYYY%/%MM%/Prayer Times %YYYY%-%MM%-%DD%.md")
-                    .setValue(this.plugin.settings.outputLocation)
-                    .onChange(async (value) => {
-                        const newValue = value.trim();
-                        this.plugin.settings.outputLocation = newValue;
-                        await this.plugin.saveSettings();
-                    })
-            );
-
-        // Add extra help for path placeholders
-        new Setting(containerEl)
-            .setName("Path Placeholders")
-            .setDesc(`
-You can use these placeholders in your output file path:
-%YYYY% - Full year (e.g., 2024)
-%YY% - Short year (e.g., 24)
-%MM% - Month with leading zero (01-12)
-%M% - Month without leading zero (1-12)
-%DD% - Day with leading zero (01-31)
-%D% - Day without leading zero (1-31)
-%MMM% - Month name abbreviation (Jan)
-%MMMM% - Full month name (January)
-%ddd% - Day name abbreviation (Mon)
-%dddd% - Full day name (Monday)
-
-Example: Notes/%YYYY%/%MM%/Prayer Times %YYYY%-%MM%-%DD%.md
-            `);
-
-        // Add reset to default button
-        new Setting(containerEl)
-            .setHeading()
-            .setName("Reset Settings");
-            
-        new Setting(containerEl)
-            .setName("Reset to Default")
-            .setDesc("Reset all settings to their default values")
-            .addButton((button: ButtonComponent) => {
-                button
-                    .setButtonText("Reset All Settings")
-                    .setCta()
-                    .onClick(async () => {
-                        // Ask for confirmation
-                        if (confirm("Are you sure you want to reset all settings to their default values?")) {
-                            await this.plugin.resetSettings();
-                            // Refresh the settings tab
-                            this.display();
-                        }
-                    });
-            });
-
-        // Only show custom template editor if custom template is selected
+        // Show custom template editor immediately after dropdown if custom is selected
         if (this.plugin.settings.selectedPreset === "custom") {
             // Main Template with integrated reset button
             const mainTemplateSetting = new Setting(containerEl)
@@ -336,6 +243,101 @@ Prayer Times:
 
 Replace "prayer" with: fajr, sunrise, dhuhr, asr, maghrib, isha, midnight
                 `);
+        } else {
+            // Only show formatting options if not using custom template
+            // 24-hour time format toggle
+            new Setting(containerEl)
+                .setName("Use 24-hour Time Format")
+                .setDesc("Display times in 24-hour format instead of AM/PM")
+                .addToggle((toggle) => {
+                    toggle
+                        .setValue(this.plugin.settings.use24HourFormat)
+                        .onChange(async (value) => {
+                            this.plugin.settings.use24HourFormat = value;
+                            await this.plugin.saveSettings();
+                        });
+                });
+            
+            // Show date toggle
+            new Setting(containerEl)
+                .setName("Show Date")
+                .setDesc("Display the date in the header")
+                .addToggle((toggle) => {
+                    toggle
+                        .setValue(this.plugin.settings.showDate)
+                        .onChange(async (value) => {
+                            this.plugin.settings.showDate = value;
+                            await this.plugin.saveSettings();
+                        });
+                });
+            
+            // Show location toggle
+            new Setting(containerEl)
+                .setName("Show Location")
+                .setDesc("Display the location in the header")
+                .addToggle((toggle) => {
+                    toggle
+                        .setValue(this.plugin.settings.showLocation)
+                        .onChange(async (value) => {
+                            this.plugin.settings.showLocation = value;
+                            await this.plugin.saveSettings();
+                        });
+                });
+
+            // Show UTC time toggle
+            new Setting(containerEl)
+                .setName("Show UTC Time")
+                .setDesc("Include UTC time column in table or after regular time")
+                .addToggle((toggle) => {
+                    toggle
+                        .setValue(this.plugin.settings.includeUtcTime)
+                        .onChange(async (value) => {
+                            this.plugin.settings.includeUtcTime = value;
+                            await this.plugin.saveSettings();
+                            // Refresh to show/hide UTC offset setting
+                            this.display();
+                        });
+                });
+
+            // Only show UTC offset if UTC time is enabled
+            if (this.plugin.settings.includeUtcTime) {
+                new Setting(containerEl)
+                    .setName("UTC Offset")
+                    .setDesc("Specify the UTC offset to calculate UTC time")
+                    .addDropdown((dropdown) => {
+                        for (let i = -12; i <= 14; i++) {
+                            const offsetString = i >= 0 ? `+${i}` : `${i}`;
+                            dropdown.addOption(i.toString(), `UTC${offsetString}`);
+                        }
+                        dropdown.setValue(this.plugin.settings.utcOffset.toString())
+                            .onChange(async (value) => {
+                                this.plugin.settings.utcOffset = parseInt(value);
+                                await this.plugin.saveSettings();
+                            });
+                    });
+            }
         }
+
+        // Add reset to default button
+        new Setting(containerEl)
+            .setHeading()
+            .setName("Reset");
+            
+        new Setting(containerEl)
+            .setName("Reset to Default")
+            .setDesc("Reset all settings to their default values")
+            .addButton((button: ButtonComponent) => {
+                button
+                    .setButtonText("Reset All Settings")
+                    .setCta()
+                    .onClick(async () => {
+                        // Ask for confirmation
+                        if (confirm("Are you sure you want to reset all settings to their default values?")) {
+                            await this.plugin.resetSettings();
+                            // Refresh the settings tab
+                            this.display();
+                        }
+                    });
+            });
     }
 }
