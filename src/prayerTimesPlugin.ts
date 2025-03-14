@@ -8,14 +8,14 @@ export default class PrayerTimesPlugin extends Plugin {
 
     async onload() {
         // Load settings without awaiting to avoid blocking initialization
-        this.loadSettings().then(() => {
-            // Register events and add commands after settings are loaded
-            this.registerEvents();
-            this.addCommands();
-        });
-
+        await this.loadSettings();
+        
         // Add settings tab immediately to ensure UI is responsive
         this.addSettingTab(new PrayerTimesSettingTab(this.app, this));
+        
+        // Register events and commands after settings are loaded
+        this.registerEvents();
+        this.addCommands();
     }
 
     /**
@@ -24,13 +24,14 @@ export default class PrayerTimesPlugin extends Plugin {
     private registerEvents(): void {
         // Only setup prayer time fetching if the setting is enabled
         if (this.settings.fetchOnLaunch) {
-            // Use requestAnimationFrame to defer execution until after UI rendering
-            window.requestAnimationFrame(() => {
+            // Use a single timeout to defer execution to prevent duplicate calls
+            const timeoutId = setTimeout(() => {
                 this.app.workspace.onLayoutReady(() => {
-                    // Use setTimeout to move this off the critical rendering path
-                    setTimeout(() => this.updatePrayerTimes(), 1000);
+                    this.updatePrayerTimes();
                 });
-            });
+                // Clear the timeout to prevent memory leaks
+                clearTimeout(timeoutId);
+            }, 1000);
         }
 
         // Handle fetch on note open - optimize the check
@@ -66,13 +67,11 @@ export default class PrayerTimesPlugin extends Plugin {
         try {
             const outputPath = this.processPathPlaceholders(this.settings.outputLocation);
             
-            // Use Promise.all to parallelize fetch and file operations where possible
+            // Fetch prayer times first
             const prayerTimesContent = await fetchPrayerTimes(this.settings);
-            this.updateCustomFile(outputPath, prayerTimesContent)
-                .catch(error => {
-                    console.error(`Error updating file: ${error}`);
-                    new Notice(`Prayer Times Plugin: Error updating file. ${error}`);
-                });
+            
+            // Then update the file - let updateCustomFile handle notifications
+            await this.updateCustomFile(outputPath, prayerTimesContent);
         } catch (error) {
             console.error(`Failed to update prayer times: ${error}`);
             new Notice(`Prayer Times Plugin: Failed to update prayer times. ${error}`);
