@@ -46,6 +46,51 @@ After enabling the plugin, configure the settings via `Settings > Prayer Times`:
 | Maghrib  | 06:10 PM   | 11:10 PM   |
 | Isha     | 07:30 PM   | 12:30 AM   |
 
+## Available Placeholders
+
+### Template Placeholders
+When using custom templates, you can use these placeholders:
+
+#### General
+- `%city%` — Your configured city name
+
+#### Date
+- `%YYYY%` — Full year (2024)
+- `%YY%` — Short year (24)
+- `%MM%` — Month with leading zero (01-12)
+- `%M%` — Month without leading zero (1-12)
+- `%DD%` — Day with leading zero (01-31)
+- `%D%` — Day without leading zero (1-31)
+- `%MMMM%` — Full month name (January)
+- `%MMM%` — Month abbreviation (Jan)
+- `%dddd%` — Full day name (Monday)
+- `%ddd%` — Day abbreviation (Mon)
+- `%date%` — Full formatted date (January 15, 2024)
+
+#### Prayer Times
+- `%prayer%` — Standard 12-hour time (5:23 AM)
+- `%prayer_24h%` — 24-hour time (05:23)
+- `%prayer_utc%` — UTC time in 12-hour format
+- `%prayer_24h_utc%` — UTC time in 24-hour format
+
+Replace "prayer" with: fajr, sunrise, dhuhr, asr, maghrib, isha, midnight
+
+### Path Placeholders
+When configuring the output location, you can use these date placeholders:
+
+- `%YYYY%` — Full year (2024)
+- `%YY%` — Short year (24)
+- `%MM%` — Month with leading zero (01-12)
+- `%M%` — Month without leading zero (1-12)
+- `%DD%` — Day with leading zero (01-31)
+- `%D%` — Day without leading zero (1-31)
+- `%MMM%` — Month abbreviation (Jan)
+- `%MMMM%` — Full month name (January)
+- `%ddd%` — Day abbreviation (Mon)
+- `%dddd%` — Full day name (Monday)
+
+Example path: `Notes/%YYYY%/%MM%/Prayer Times %YYYY%-%MM%-%DD%.md`
+
 ## Development
 
 ### File Overview
