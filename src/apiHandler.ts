@@ -1,14 +1,34 @@
 import { requestUrl } from "obsidian";
 import { PrayerTimesSettings } from "./settings";
 
+// Template presets
+const TEMPLATE_PRESETS: Record<string, Record<string, string>> = {
+    table: {
+        regular: "**Date:** %MMMM% %DD%, %YYYY%\n**Location:** %city%\n\n| Prayer | Time | Time (UTC) |\n|--------|------|-------------|\n| Fajr | %fajr% | %fajr_utc% |\n| Sunrise | %sunrise% | %sunrise_utc% |\n| Dhuhr | %dhuhr% | %dhuhr_utc% |\n| Asr | %asr% | %asr_utc% |\n| Maghrib | %maghrib% | %maghrib_utc% |\n| Isha | %isha% | %isha_utc% |\n| Midnight | %midnight% | %midnight_utc% |",
+        "24h": "**Date:** %MMMM% %DD%, %YYYY%\n**Location:** %city%\n\n| Prayer | Time | Time (UTC) |\n|--------|------|-------------|\n| Fajr | %fajr_24h% | %fajr_24h_utc% |\n| Sunrise | %sunrise_24h% | %sunrise_24h_utc% |\n| Dhuhr | %dhuhr_24h% | %dhuhr_24h_utc% |\n| Asr | %asr_24h% | %asr_24h_utc% |\n| Maghrib | %maghrib_24h% | %maghrib_24h_utc% |\n| Isha | %isha_24h% | %isha_24h_utc% |\n| Midnight | %midnight_24h% | %midnight_24h_utc% |",
+    },
+    checklist: {
+        regular: "**Date:** %MMMM% %DD%, %YYYY%\n**Location:** %city%\n\n- [ ] Fajr: %fajr%\n- [ ] Sunrise: %sunrise%\n- [ ] Dhuhr: %dhuhr%\n- [ ] Asr: %asr%\n- [ ] Maghrib: %maghrib%\n- [ ] Isha: %isha%\n- [ ] Midnight: %midnight%",
+        "24h": "**Date:** %MMMM% %DD%, %YYYY%\n**Location:** %city%\n\n- [ ] Fajr: %fajr_24h%\n- [ ] Sunrise: %sunrise_24h%\n- [ ] Dhuhr: %dhuhr_24h%\n- [ ] Asr: %asr_24h%\n- [ ] Maghrib: %maghrib_24h%\n- [ ] Isha: %isha_24h%\n- [ ] Midnight: %midnight_24h%",
+    },
+    simple: {
+        regular: "**Date:** %MMMM% %DD%, %YYYY%\n**Location:** %city%\n\nFajr: %fajr%\nSunrise: %sunrise%\nDhuhr: %dhuhr%\nAsr: %asr%\nMaghrib: %maghrib%\nIsha: %isha%\nMidnight: %midnight%",
+        "24h": "**Date:** %MMMM% %DD%, %YYYY%\n**Location:** %city%\n\nFajr: %fajr_24h%\nSunrise: %sunrise_24h%\nDhuhr: %dhuhr_24h%\nAsr: %asr_24h%\nMaghrib: %maghrib_24h%\nIsha: %isha_24h%\nMidnight: %midnight_24h%",
+    },
+};
+
 export async function fetchPrayerTimes(settings: PrayerTimesSettings): Promise<string> {
     const {
         city,
-        prayersToInclude,
+        includePrayerNames,
         includeUtcTime,
         utcOffset,
+        useCustomTemplate,
+        selectedPreset,
         template,
-        prayerTemplate,
+        use24HourFormat,
+        showDate,
+        showLocation,
     } = settings;
 
     const apiUrl = `https://api.aladhan.com/v1/timingsByCity?city=${encodeURIComponent(city)}&country=&method=2`;
@@ -28,100 +48,102 @@ export async function fetchPrayerTimes(settings: PrayerTimesSettings): Promise<s
     const monthName = date.toLocaleString('default', { month: 'long' });
     const dayName = date.toLocaleString('default', { weekday: 'long' });
     
-    // Format date for the placeholder
-    const formattedDate = `${monthName} ${day}, ${year}`;
-    
     // Get all available prayer times
     const allPrayerTimes = data.data.timings;
     
-    // Filter prayers based on user selection
-    const filteredPrayerTimes = Object.entries(allPrayerTimes).filter(([key]) =>
-        prayersToInclude.includes(key)
-    );
-
-    // Create prayer-specific times map for prayer placeholders
-    const prayerMap = new Map();
+    // Create a map of all placeholder values
+    const placeholders = new Map();
+    
+    // Add date placeholders (replacing %date% with individual components)
+    placeholders.set('%DD%', day.toString().padStart(2, '0'));
+    placeholders.set('%D%', day.toString());
+    placeholders.set('%MM%', month.toString().padStart(2, '0'));
+    placeholders.set('%M%', month.toString());
+    placeholders.set('%YYYY%', year.toString());
+    placeholders.set('%YY%', year.toString().slice(-2));
+    placeholders.set('%MMMM%', monthName);
+    placeholders.set('%MMM%', date.toLocaleString('default', { month: 'short' }));
+    placeholders.set('%dddd%', dayName);
+    placeholders.set('%ddd%', date.toLocaleString('default', { weekday: 'short' }));
+    
+    // For backward compatibility
+    placeholders.set('%date%', `${monthName} ${day}, ${year}`);
+    placeholders.set('%city%', city);
+    
+    // Add prayer-specific placeholders
     Object.entries(allPrayerTimes).forEach(([prayer, time]) => {
         const prayerKey = prayer.toLowerCase();
         const timeObj = new Date(`${rawDate} ${time}`);
         
-        // Store both 12h and 24h formats with consistent % notation
-        prayerMap.set(`%${prayerKey}%`, formatTime(timeObj, false));
-        prayerMap.set(`%${prayerKey}_24h%`, formatTime(timeObj, true));
+        // Store both 12h and 24h formats
+        placeholders.set(`%${prayerKey}%`, formatTime(timeObj, false));
+        placeholders.set(`%${prayerKey}_24h%`, formatTime(timeObj, true));
         
         if (includeUtcTime) {
             const utcTimeObj = new Date(timeObj.getTime() - utcOffset * 60 * 60 * 1000);
-            prayerMap.set(`%${prayerKey}_utc%`, formatTime(utcTimeObj, false));
-            prayerMap.set(`%${prayerKey}_24h_utc%`, formatTime(utcTimeObj, true));
+            placeholders.set(`%${prayerKey}_utc%`, formatTime(utcTimeObj, false));
+            placeholders.set(`%${prayerKey}_24h_utc%`, formatTime(utcTimeObj, true));
+        } else {
+            // If UTC time is disabled, provide empty values
+            placeholders.set(`%${prayerKey}_utc%`, '');
+            placeholders.set(`%${prayerKey}_24h_utc%`, '');
         }
     });
-
-    // Generate prayer entries using the template
-    const prayerEntries = filteredPrayerTimes.map(([prayer, time]) => {
-        const localTime = `${rawDate} ${time}`;
-        const localDate = new Date(localTime);
-        
-        // Format times
-        const time12h = formatTime(localDate, false);
-        const time24h = formatTime(localDate, true);
-        
-        // Calculate UTC time
-        let utcTime = '';
-        let utcTime24h = '';
-        if (includeUtcTime) {
-            const utcDate = new Date(localDate.getTime() - utcOffset * 60 * 60 * 1000);
-            utcTime = formatTime(utcDate, false);
-            utcTime24h = formatTime(utcDate, true);
-        }
-        
-        // Replace placeholders in prayer template
-        let entry = prayerTemplate;
-        
-        // Basic replacements
-        entry = entry.replace(/%prayer%/g, prayer);
-        entry = entry.replace(/%time%/g, time12h);
-        entry = entry.replace(/%24h_time%/g, time24h);
-        entry = entry.replace(/%utc_time%/g, utcTime);
-        entry = entry.replace(/%24h_utc_time%/g, utcTime24h); // More consistent naming
-        
-        // Replace prayer-specific placeholders
-        for (const [key, value] of prayerMap.entries()) {
-            entry = entry.replace(new RegExp(key.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1"), 'g'), value);
-        }
-        
-        return entry;
-    }).join('\n');
-
-    // Replace placeholders in main template
-    let content = template;
     
-    // Basic replacements
-    content = content.replace(/%date%/g, formattedDate);
-    content = content.replace(/%city%/g, city);
-    content = content.replace(/%prayers%/g, prayerEntries);
+    // Determine which template to use
+    let templateToUse = useCustomTemplate 
+        ? template 
+        : getPresetTemplate(selectedPreset, use24HourFormat, includeUtcTime, showDate, showLocation);
     
-    // Date parts
-    content = content.replace(/%dd%/g, day.toString().padStart(2, '0'));
-    content = content.replace(/%mm%/g, month.toString().padStart(2, '0'));
-    content = content.replace(/%yyyy%/g, year.toString());
-    content = content.replace(/%month%/g, monthName);
-    content = content.replace(/%day%/g, dayName);
-    
-    // UTC table parts
-    if (includeUtcTime) {
-        content = content.replace(/%utc_header%/g, 'Time (UTC)');
-        content = content.replace(/%utc_divider%/g, '----------');
-    } else {
-        content = content.replace(/%utc_header%/g, '');
-        content = content.replace(/%utc_divider%/g, '');
+    // Filter to only include selected prayers if using custom template
+    if (useCustomTemplate) {
+        // Custom logic for filtering prayers in custom templates would go here if needed
     }
     
-    // Replace prayer-specific placeholders in the main template as well
-    for (const [key, value] of prayerMap.entries()) {
-        content = content.replace(new RegExp(key.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1"), 'g'), value);
+    // Apply all placeholders to the template
+    let content = templateToUse;
+    for (const [key, value] of placeholders.entries()) {
+        const regex = new RegExp(key.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1"), 'g');
+        content = content.replace(regex, value);
     }
-
+    
     return content;
+}
+
+// Helper function to get the appropriate preset template
+function getPresetTemplate(preset: string, use24HourFormat: boolean, includeUtc: boolean, showDate: boolean, showLocation: boolean): string {
+    const formatKey = use24HourFormat ? "24h" : "regular";
+    
+    // Use default preset if the requested one doesn't exist
+    const presetObj = TEMPLATE_PRESETS[preset] || TEMPLATE_PRESETS["table"];
+    
+    // Get the specific format template
+    let template = presetObj[formatKey] || presetObj["regular"];
+    
+    // Apply formatting options
+    if (!includeUtc) {
+        // For table format, remove the UTC column
+        if (preset === "table") {
+            template = template
+                .replace(/\| Time \| Time \(UTC\) \|/g, "| Time |")
+                .replace(/\|------\|-------------\|/g, "|------|")
+                .replace(/ \| %\w+_(?:24h_)?utc% \|/g, " |");
+        }
+        
+        // For other formats, no special handling needed as placeholders will be replaced with empty strings
+    }
+    
+    // Remove date line if not showing date
+    if (!showDate) {
+        template = template.replace(/\*\*Date:\*\* %MMMM% %DD%, %YYYY%\n/g, "");
+    }
+    
+    // Remove location line if not showing location
+    if (!showLocation) {
+        template = template.replace(/\*\*Location:\*\* %city%\n/g, "");
+    }
+    
+    return template;
 }
 
 // Helper function to format time

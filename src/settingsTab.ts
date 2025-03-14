@@ -14,36 +14,64 @@ export default class PrayerTimesSettingTab extends PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty();
 
-        // Add custom CSS for spinning arrow
+        // Add custom CSS for template controls
         const style = document.createElement('style');
         style.textContent = `
-            .reset-arrow-button {
-                color: var(--text-error) !important;
-                padding: 0 !important;
-                margin-left: 8px !important;
+            .template-container {
+                position: relative;
+                width: 100%;
             }
-            .reset-arrow-button:hover svg {
-                animation: spin 1s linear;
+            .template-textarea {
+                width: 100%;
+                min-height: 80px;
+                resize: vertical;
+                padding-right: 30px !important;
+                white-space: pre;
+                overflow-x: auto;
             }
-            @keyframes spin {
-                from { transform: rotate(0deg); }
-                to { transform: rotate(360deg); }
+            .prayer-template-textarea {
+                min-height: 40px !important;
+                width: 100%;
+                resize: vertical;
+                padding-right: 30px !important;
+                white-space: pre;
+                overflow-x: auto;
             }
+            .template-reset {
+                position: absolute;
+                top: 8px;
+                right: 8px;
+                color: var(--text-muted);
+                background: transparent;
+                border: none;
+                cursor: pointer;
+                padding: 4px;
+                border-radius: 4px;
+                transition: background-color 0.2s ease;
+            }
+            .template-reset:hover {
+                color: var(--text-accent);
+                background-color: var(--background-modifier-hover);
+            }
+            .template-reset:hover svg {
+                transform: rotate(90deg);
+                transition: transform 0.3s ease;
+            }
+            /* Remove all the aggressive styling */
         `;
         containerEl.appendChild(style);
 
         // General settings (no heading)
         new Setting(containerEl)
             .setName("Prayers to include")
-            .setDesc("Valid options: Fajr, Sunrise, Dhuhr, Asr, Maghrib, Isha, Midnight")
-            .addTextArea((textArea) =>
-                textArea
-                    .setPlaceholder("e.g., Fajr, Dhuhr, Asr")
-                    .setValue(this.plugin.settings.prayersToInclude.join(", "))
-                    .onChange(async (value) => {
-                        this.plugin.settings.prayersToInclude = value.split(",").map((prayer) => prayer.trim());
-                        await this.plugin.saveSettings();
-                    })
+            .setDesc("Comma separated list of prayers to include (used in custom templates)")
+            .addText((text) => text
+                .setPlaceholder("Fajr, Sunrise, Dhuhr, Asr, Maghrib, Isha")
+                .setValue(this.plugin.settings.includePrayerNames.join(", "))
+                .onChange(async (value) => {
+                    this.plugin.settings.includePrayerNames = value.split(",").map((prayer) => prayer.trim());
+                    await this.plugin.saveSettings();
+                })
             );
 
         new Setting(containerEl)
@@ -90,20 +118,8 @@ export default class PrayerTimesSettingTab extends PluginSettingTab {
             .setName("UTC Settings");
 
         new Setting(containerEl)
-            .setName("Include UTC Time")
-            .setDesc("Make UTC time placeholders available.")
-            .addToggle((toggle) =>
-                toggle
-                    .setValue(this.plugin.settings.includeUtcTime)
-                    .onChange(async (value) => {
-                        this.plugin.settings.includeUtcTime = value;
-                        await this.plugin.saveSettings();
-                    })
-            );
-
-        new Setting(containerEl)
             .setName("UTC Offset")
-            .setDesc("Specify the UTC offset to calculate UTC time.")
+            .setDesc("Specify the UTC offset to calculate UTC time (when UTC time is enabled).")
             .addDropdown((dropdown) => {
                 for (let i = -12; i <= 14; i++) {
                     const offsetString = i >= 0 ? `+${i}` : `${i}`;
@@ -123,144 +139,173 @@ export default class PrayerTimesSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Output Location")
-            .setDesc("Choose where to store prayer times")
-            .addDropdown((dropdown) =>
-                dropdown
-                    .addOptions({
-                        "dedicated": "Dedicated 'Prayer Times.md' file",
-                        "daily": "Daily Note"
-                    })
+            .setDesc("File path for prayer times. Supports date placeholders: %YYYY%, %MM%, %DD%, etc.")
+            .addText((text) =>
+                text
+                    .setPlaceholder("Prayer Times.md or Notes/%YYYY%/%MM%/Prayer Times %YYYY%-%MM%-%DD%.md")
                     .setValue(this.plugin.settings.outputLocation)
                     .onChange(async (value) => {
-                        this.plugin.settings.outputLocation = value;
+                        const newValue = value.trim();
+                        this.plugin.settings.outputLocation = newValue;
                         await this.plugin.saveSettings();
                     })
             );
 
-        // Only show these settings if daily note is selected
-        if (this.plugin.settings.outputLocation === "daily") {
-            new Setting(containerEl)
-                .setName("Daily Note Format")
-                .setDesc("Format for daily note filenames (e.g., YYYY-MM-DD)")
-                .addText((text) =>
-                    text
-                        .setPlaceholder("YYYY-MM-DD")
-                        .setValue(this.plugin.settings.dailyNoteFormat)
-                        .onChange(async (value) => {
-                            this.plugin.settings.dailyNoteFormat = value;
-                            await this.plugin.saveSettings();
-                        })
-                );
+        // Add extra help for path placeholders
+        new Setting(containerEl)
+            .setName("Path Placeholders")
+            .setDesc(`
+You can use these placeholders in your output file path:
+%YYYY% - Full year (e.g., 2024)
+%YY% - Short year (e.g., 24)
+%MM% - Month with leading zero (01-12)
+%M% - Month without leading zero (1-12)
+%DD% - Day with leading zero (01-31)
+%D% - Day without leading zero (1-31)
+%MMM% - Month name abbreviation (Jan)
+%MMMM% - Full month name (January)
+%ddd% - Day name abbreviation (Mon)
+%dddd% - Full day name (Monday)
 
-            new Setting(containerEl)
-                .setName("Auto-create Daily Note")
-                .setDesc("Automatically create daily note if it doesn't exist?")
-                .addToggle((toggle) =>
-                    toggle
-                        .setValue(this.plugin.settings.autoCreateDailyNote)
-                        .onChange(async (value) => {
-                            this.plugin.settings.autoCreateDailyNote = value;
-                            await this.plugin.saveSettings();
-                        })
-                );
-                
-            new Setting(containerEl)
-                .setName("Section Heading")
-                .setDesc("Heading to use for the prayer times section in daily notes")
-                .addText((text) =>
-                    text
-                        .setPlaceholder("Prayer Times")
-                        .setValue(this.plugin.settings.sectionHeading)
-                        .onChange(async (value) => {
-                            this.plugin.settings.sectionHeading = value;
-                            await this.plugin.saveSettings();
-                        })
-                );
-                
-            new Setting(containerEl)
-                .setName("Daily Note Template")
-                .setDesc("Template to use for daily notes. Use %prayers% placeholder for prayer times.")
-                .addTextArea((text) =>
-                    text
-                        .setPlaceholder("%prayers%")
-                        .setValue(this.plugin.settings.dailyTemplate)
-                        .onChange(async (value) => {
-                            this.plugin.settings.dailyTemplate = value;
-                            await this.plugin.saveSettings();
-                        })
-                )
-                .addButton((button: ButtonComponent) => {
-                    button
-                        .setTooltip("Reset to default template")
-                        .setClass("reset-arrow-button")
-                        .onClick(async () => {
-                            this.plugin.settings.dailyTemplate = DEFAULT_SETTINGS.dailyTemplate;
-                            await this.plugin.saveSettings();
-                            this.display();
-                        });
-                    
-                    // Set arrow-reset icon
-                    setIcon(button.buttonEl, "reset");
-                });
-        }
+Example: Notes/%YYYY%/%MM%/Prayer Times %YYYY%-%MM%-%DD%.md
+            `);
 
         // Template Settings
         new Setting(containerEl)
             .setHeading()
             .setName("Template Settings");
             
+        // Template preset dropdown
         new Setting(containerEl)
-            .setName("Main Template")
-            .setDesc("Template for the entire output. Use placeholders to customize the format.")
-            .addTextArea((text) =>
-                text
-                    .setPlaceholder("**Date:** %date%\n**Location:** %city%\n\n| Prayer | Time | %utc_header% |\n|--------|------|%utc_divider%|\n%prayers%")
-                    .setValue(this.plugin.settings.template)
+            .setName("Template Preset")
+            .setDesc("Choose one of the built-in template formats")
+            .addDropdown((dropdown) => {
+                dropdown
+                    .addOption("table", "Table Format")
+                    .addOption("checklist", "Checklist Format")
+                    .addOption("simple", "Simple List")
+                    .setValue(this.plugin.settings.selectedPreset)
                     .onChange(async (value) => {
-                        this.plugin.settings.template = value;
+                        this.plugin.settings.selectedPreset = value;
                         await this.plugin.saveSettings();
-                    })
-                )
-                .addButton((button: ButtonComponent) => {
-                    button
-                        .setTooltip("Reset to default template")
-                        .setClass("reset-arrow-button")
-                        .onClick(async () => {
-                            this.plugin.settings.template = DEFAULT_SETTINGS.template;
-                            await this.plugin.saveSettings();
-                            this.display();
-                        });
-                    
-                    // Set arrow-reset icon
-                    setIcon(button.buttonEl, "reset");
-                });
+                        // Refresh to update formatting options
+                        this.display();
+                    });
+            });
             
+        // Custom template toggle
         new Setting(containerEl)
-            .setName("Prayer Template")
-            .setDesc("Template for each prayer entry. This determines how each individual prayer is formatted.")
-            .addTextArea((text) =>
-                text
-                    .setPlaceholder("| %prayer% | %time% | %utc_time% |")
-                    .setValue(this.plugin.settings.prayerTemplate)
+            .setName("Use Custom Template")
+            .setDesc("Create your own custom template instead of using a preset")
+            .addToggle((toggle) => {
+                toggle
+                    .setValue(this.plugin.settings.useCustomTemplate)
                     .onChange(async (value) => {
-                        this.plugin.settings.prayerTemplate = value;
+                        this.plugin.settings.useCustomTemplate = value;
                         await this.plugin.saveSettings();
-                    })
-                )
-                .addButton((button: ButtonComponent) => {
-                    button
-                        .setTooltip("Reset to default template")
-                        .setClass("reset-arrow-button")
-                        .onClick(async () => {
-                            this.plugin.settings.prayerTemplate = DEFAULT_SETTINGS.prayerTemplate;
+                        // Refresh to show/hide the template editor and formatting options
+                        this.display();
+                    });
+            });
+        
+        // Formatting section (only show when not using custom template)
+        if (!this.plugin.settings.useCustomTemplate) {
+            new Setting(containerEl)
+                .setHeading()
+                .setName("Formatting");
+                
+            // 24-hour time format toggle
+            new Setting(containerEl)
+                .setName("Use 24-hour Time Format")
+                .setDesc("Display times in 24-hour format instead of AM/PM")
+                .addToggle((toggle) => {
+                    toggle
+                        .setValue(this.plugin.settings.use24HourFormat)
+                        .onChange(async (value) => {
+                            this.plugin.settings.use24HourFormat = value;
                             await this.plugin.saveSettings();
-                            this.display();
                         });
-                    
-                    // Set arrow-reset icon
-                    setIcon(button.buttonEl, "reset");
                 });
-            
+                
+            // Show UTC time toggle (already exists but moved to Formatting section)
+            new Setting(containerEl)
+                .setName("Show UTC Time")
+                .setDesc("Include UTC time column in table or after regular time")
+                .addToggle((toggle) => {
+                    toggle
+                        .setValue(this.plugin.settings.includeUtcTime)
+                        .onChange(async (value) => {
+                            this.plugin.settings.includeUtcTime = value;
+                            await this.plugin.saveSettings();
+                        });
+                });
+                
+            // Show date toggle
+            new Setting(containerEl)
+                .setName("Show Date")
+                .setDesc("Display the date in the header")
+                .addToggle((toggle) => {
+                    toggle
+                        .setValue(this.plugin.settings.showDate)
+                        .onChange(async (value) => {
+                            this.plugin.settings.showDate = value;
+                            await this.plugin.saveSettings();
+                        });
+                });
+                
+            // Show location toggle
+            new Setting(containerEl)
+                .setName("Show Location")
+                .setDesc("Display the location in the header")
+                .addToggle((toggle) => {
+                    toggle
+                        .setValue(this.plugin.settings.showLocation)
+                        .onChange(async (value) => {
+                            this.plugin.settings.showLocation = value;
+                            await this.plugin.saveSettings();
+                        });
+                });
+        }
+
+        // Only show custom template editor if custom template is enabled
+        if (this.plugin.settings.useCustomTemplate) {
+            // Main Template with integrated reset button
+            const mainTemplateSetting = new Setting(containerEl)
+                .setName("Custom Template")
+                .setDesc("Design your own template with placeholders for prayer times.");
+
+            const mainTemplateContainer = document.createElement('div');
+            mainTemplateContainer.className = 'template-container';
+            mainTemplateContainer.style.width = '100%';
+            mainTemplateSetting.controlEl.style.maxWidth = '100%';
+            mainTemplateSetting.settingEl.style.flexDirection = 'column';
+            mainTemplateSetting.settingEl.style.alignItems = 'flex-start';
+            mainTemplateSetting.controlEl.style.marginTop = '8px';
+            mainTemplateSetting.controlEl.appendChild(mainTemplateContainer);
+
+            const mainTemplateTextarea = document.createElement('textarea');
+            mainTemplateTextarea.className = 'template-textarea';
+            mainTemplateTextarea.placeholder = "**Date:** %MMMM% %DD%, %YYYY%\n**Location:** %city%\n\n| Prayer | Time | Time (UTC) |\n|--------|------|-------------|\n| Fajr | %fajr% | %fajr_utc% |";
+            mainTemplateTextarea.value = this.plugin.settings.template;
+            mainTemplateTextarea.addEventListener('change', async () => {
+                this.plugin.settings.template = mainTemplateTextarea.value;
+                await this.plugin.saveSettings();
+            });
+            mainTemplateContainer.appendChild(mainTemplateTextarea);
+
+            const mainTemplateResetBtn = document.createElement('button');
+            mainTemplateResetBtn.className = 'template-reset';
+            mainTemplateResetBtn.setAttribute('aria-label', 'Reset to default template');
+            mainTemplateResetBtn.title = 'Reset to default template';
+            mainTemplateResetBtn.addEventListener('click', async () => {
+                this.plugin.settings.template = DEFAULT_SETTINGS.template;
+                mainTemplateTextarea.value = DEFAULT_SETTINGS.template;
+                await this.plugin.saveSettings();
+            });
+            setIcon(mainTemplateResetBtn, 'reset');
+            mainTemplateContainer.appendChild(mainTemplateResetBtn);
+        }
+
         // Detailed placeholder help
         new Setting(containerEl)
             .setName("Template Help")
@@ -272,17 +317,19 @@ export default class PrayerTimesSettingTab extends PluginSettingTab {
             .setDesc(`
 %date% - Full formatted date (e.g., "January 15, 2024")
 %city% - Your configured city name
-%prayers% - All prayer entries (in Main Template only)
             `);
 
         // Time placeholders explanation
         new Setting(containerEl)
-            .setName("Time Format Placeholders")
+            .setName("Prayer Time Placeholders")
             .setDesc(`
-%time% - Standard 12-hour time (e.g., "5:23 AM")
-%24h_time% - 24-hour time format (e.g., "05:23")
-%utc_time% - UTC time in 12-hour format
-%24h_utc_time% - UTC time in 24-hour format
+For each prayer (replace 'prayer' with fajr, dhuhr, asr, etc.):
+%prayer% - Standard 12-hour time (e.g., "5:23 AM")
+%prayer_24h% - 24-hour time format (e.g., "05:23")
+%prayer_utc% - UTC time in 12-hour format
+%prayer_24h_utc% - UTC time in 24-hour format
+
+Example: %fajr%, %dhuhr_24h%, %asr_utc%, etc.
             `);
 
         // Date placeholders explanation  
@@ -295,33 +342,26 @@ export default class PrayerTimesSettingTab extends PluginSettingTab {
 %month% - Month name (e.g., "January")
 %day% - Day of week (e.g., "Monday")
             `);
-
-        // UTC and prayer-specific placeholders  
-        new Setting(containerEl)
-            .setName("Special Placeholders")
-            .setDesc(`
-%utc_header%, %utc_divider% - For formatting table headers with UTC column
-
-Prayer-specific: %fajr%, %dhuhr%, %asr%, %maghrib%, %isha%, %sunrise%, %midnight%, etc.
-For 24-hour format: %fajr_24h%, %dhuhr_24h%, etc.
-For UTC: %fajr_utc%, %dhuhr_utc%, etc.
-For 24-hour UTC: %fajr_24h_utc%, %dhuhr_24h_utc%, etc.
-            `);
             
         // Example Templates
         new Setting(containerEl)
             .setName("Example Templates")
             .setDesc(`
-Checkbox Format (Prayer Template):
-- [ ] %prayer%: %time%
+Table Format:
+| Prayer | Time | Time (UTC) |
+|--------|------|-------------|
+| Fajr | %fajr% | %fajr_utc% |
+| Dhuhr | %dhuhr% | %dhuhr_utc% |
 
-Daily Prayer To-Do List (Main Template):
-## Prayer Tasks for %date%
-%prayers%
+Checkbox Format:
+- [ ] Fajr: %fajr%
+- [ ] Dhuhr: %dhuhr%
+- [ ] Asr: %asr%
 
-For Specific Prayer Times:
+Simple List:
 Fajr: %fajr%
 Dhuhr: %dhuhr%
+Asr: %asr%
             `);
             
         // Add reset to default button
