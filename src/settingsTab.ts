@@ -30,6 +30,7 @@ export default class PrayerTimesSettingTab extends PluginSettingTab {
                 overflow-x: auto;
                 font-family: var(--font-monospace);
                 box-sizing: border-box;
+                margin-top: 8px;
             }
             .prayer-template-textarea {
                 min-height: 40px !important;
