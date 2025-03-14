@@ -119,7 +119,7 @@ export default class PrayerTimesSettingTab extends PluginSettingTab {
 
         new Setting(containerEl)
             .setName("Output Location")
-            .setDesc("File path for prayer times. Supports date placeholders.")
+            .setDesc("File path for prayer times. Supports %YYYY%, %MM%, %DD%, etc..")
             .addText((text) =>
                 text
                     .setPlaceholder("Prayer Times.md or Notes/%YYYY%/%MM%/Prayer Times %YYYY%-%MM%-%DD%.md")
@@ -130,26 +130,6 @@ export default class PrayerTimesSettingTab extends PluginSettingTab {
                         await this.plugin.saveSettings();
                     })
             );
-
-        // Add path placeholder help
-        new Setting(containerEl)
-            .setName("Path Placeholders")
-            .setDesc(`
-Available placeholders for file paths:
-
-%YYYY% — Full year (2024)
-%YY% — Short year (24)
-%MM% — Month with leading zero (01-12)
-%M% — Month without leading zero (1-12)
-%DD% — Day with leading zero (01-31)
-%D% — Day without leading zero (1-31)
-%MMM% — Month abbreviation (Jan)
-%MMMM% — Full month name (January)
-%ddd% — Day abbreviation (Mon)
-%dddd% — Full day name (Monday)
-
-Example: Notes/%YYYY%/%MM%/Prayer Times %YYYY%-%MM%-%DD%.md
-            `);
 
         // Template and Formatting - Moved after output configuration
         new Setting(containerEl)
