@@ -180,7 +180,7 @@ Example: Notes/%YYYY%/%MM%/Prayer Times %YYYY%-%MM%-%DD%.md
             // Main Template with integrated reset button
             const mainTemplateSetting = new Setting(containerEl)
                 .setName("Custom Template")
-                .setDesc("Design your own template with placeholders for prayer times.");
+                .setDesc("Placeholders are available in the README file.");
 
             const mainTemplateContainer = document.createElement('div');
             mainTemplateContainer.className = 'template-container';
@@ -213,51 +213,21 @@ Example: Notes/%YYYY%/%MM%/Prayer Times %YYYY%-%MM%-%DD%.md
             setIcon(mainTemplateResetBtn, 'reset');
             mainTemplateContainer.appendChild(mainTemplateResetBtn);
 
-            // Template Help
-            new Setting(containerEl)
-                .setName("Template Placeholders")
-                .setDesc(`
-Available placeholders for your custom template:
-
-General:
-%city% — Your configured city name
-
-Date:
-%YYYY% — Full year (2024)
-%YY% — Short year (24)
-%MM% — Month with leading zero (01-12)
-%M% — Month without leading zero (1-12)
-%DD% — Day with leading zero (01-31)
-%D% — Day without leading zero (1-31)
-%MMMM% — Full month name (January)
-%MMM% — Month abbreviation (Jan)
-%dddd% — Full day name (Monday)
-%ddd% — Day abbreviation (Mon)
-%date% — Full formatted date (January 15, 2024)
-
-Prayer Times:
-%prayer% — Standard 12-hour time (5:23 AM)
-%prayer_24h% — 24-hour time (05:23)
-%prayer_utc% — UTC time in 12-hour format
-%prayer_24h_utc% — UTC time in 24-hour format
-
-Replace "prayer" with: fajr, sunrise, dhuhr, asr, maghrib, isha, midnight
-                `);
         } else {
-            // Only show formatting options if not using custom template
-            // 24-hour time format toggle
+            
+            // Show location toggle
             new Setting(containerEl)
-                .setName("Use 24-hour Time Format")
-                .setDesc("Display times in 24-hour format instead of AM/PM")
+                .setName("Show Location")
+                .setDesc("Display the location in the header")
                 .addToggle((toggle) => {
                     toggle
-                        .setValue(this.plugin.settings.use24HourFormat)
+                        .setValue(this.plugin.settings.showLocation)
                         .onChange(async (value) => {
-                            this.plugin.settings.use24HourFormat = value;
+                            this.plugin.settings.showLocation = value;
                             await this.plugin.saveSettings();
                         });
                 });
-            
+
             // Show date toggle
             new Setting(containerEl)
                 .setName("Show Date")
@@ -270,16 +240,16 @@ Replace "prayer" with: fajr, sunrise, dhuhr, asr, maghrib, isha, midnight
                             await this.plugin.saveSettings();
                         });
                 });
-            
-            // Show location toggle
+            // Only show formatting options if not using custom template
+            // 24-hour time format toggle
             new Setting(containerEl)
-                .setName("Show Location")
-                .setDesc("Display the location in the header")
+                .setName("Use 24-hour Time Format")
+                .setDesc("Display times in 24-hour format instead of AM/PM")
                 .addToggle((toggle) => {
                     toggle
-                        .setValue(this.plugin.settings.showLocation)
+                        .setValue(this.plugin.settings.use24HourFormat)
                         .onChange(async (value) => {
-                            this.plugin.settings.showLocation = value;
+                            this.plugin.settings.use24HourFormat = value;
                             await this.plugin.saveSettings();
                         });
                 });

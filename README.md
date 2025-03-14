@@ -89,7 +89,7 @@ When configuring the output location, you can use these date placeholders:
 - `%ddd%` — Day abbreviation (Mon)
 - `%dddd%` — Full day name (Monday)
 
-Example path: `Notes/%YYYY%/%MM%/Prayer Times %YYYY%-%MM%-%DD%.md`
+Example path: `Notes/%YYYY%-%MM%/%DD%.md`
 
 ## Development
 
