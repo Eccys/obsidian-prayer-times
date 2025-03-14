@@ -5,18 +5,15 @@ export interface PrayerTimesSettings {
     fetchOnNoteOpen: boolean;
     outputLocation: string;
     includePrayerNames: string[];
-    includeUtcTime: boolean;
-    utcOffset: number;
     
-    // Template settings
-    template: string;
-    useCustomTemplate: boolean;
-    selectedPreset: string;
+    // Template and formatting settings
+    selectedPreset: string; // Now includes "custom" as an option
+    template: string; // Used when selectedPreset is "custom"
     use24HourFormat: boolean;
-    
-    // Formatting options
     showDate: boolean;
     showLocation: boolean;
+    includeUtcTime: boolean;
+    utcOffset: number;
     
     // Prayer time offsets in minutes
     offsetFajr: number;
@@ -35,18 +32,15 @@ export const DEFAULT_SETTINGS: PrayerTimesSettings = {
     fetchOnNoteOpen: true,
     outputLocation: "Prayer Times.md",
     includePrayerNames: ["Fajr", "Sunrise", "Dhuhr", "Asr", "Maghrib", "Isha", "Midnight"],
-    includeUtcTime: false,
-    utcOffset: 0,
     
-    // Template defaults
-    template: "**Date:** %MMMM% %DD%, %YYYY%\n**Location:** %city%\n\n| Prayer | Time |\n|--------|------|\n| Fajr | %fajr% |\n| Sunrise | %sunrise% |\n| Dhuhr | %dhuhr% |\n| Asr | %asr% |\n| Maghrib | %maghrib% |\n| Isha | %isha% |\n| Midnight | %midnight% |",
-    useCustomTemplate: false,
+    // Template and formatting defaults
     selectedPreset: "table",
+    template: "**Location:** %city%\n**Date:** %MMMM% %DD%, %YYYY%\n\n| Prayer | Time |\n|--------|------|\n| Fajr | %fajr% |\n| Sunrise | %sunrise% |\n| Dhuhr | %dhuhr% |\n| Asr | %asr% |\n| Maghrib | %maghrib% |\n| Isha | %isha% |\n| Midnight | %midnight% |",
     use24HourFormat: false,
-    
-    // Formatting defaults
     showDate: true,
     showLocation: true,
+    includeUtcTime: false,
+    utcOffset: 0,
     
     // Default offsets (no offset)
     offsetFajr: 0,

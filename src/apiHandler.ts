@@ -4,16 +4,16 @@ import { PrayerTimesSettings } from "./settings";
 // Template presets
 const TEMPLATE_PRESETS: Record<string, Record<string, string>> = {
     table: {
-        regular: "**Date:** %MMMM% %DD%, %YYYY%\n**Location:** %city%\n\n| Prayer | Time | Time (UTC) |\n|--------|------|-------------|\n| Fajr | %fajr% | %fajr_utc% |\n| Sunrise | %sunrise% | %sunrise_utc% |\n| Dhuhr | %dhuhr% | %dhuhr_utc% |\n| Asr | %asr% | %asr_utc% |\n| Maghrib | %maghrib% | %maghrib_utc% |\n| Isha | %isha% | %isha_utc% |\n| Midnight | %midnight% | %midnight_utc% |",
-        "24h": "**Date:** %MMMM% %DD%, %YYYY%\n**Location:** %city%\n\n| Prayer | Time | Time (UTC) |\n|--------|------|-------------|\n| Fajr | %fajr_24h% | %fajr_24h_utc% |\n| Sunrise | %sunrise_24h% | %sunrise_24h_utc% |\n| Dhuhr | %dhuhr_24h% | %dhuhr_24h_utc% |\n| Asr | %asr_24h% | %asr_24h_utc% |\n| Maghrib | %maghrib_24h% | %maghrib_24h_utc% |\n| Isha | %isha_24h% | %isha_24h_utc% |\n| Midnight | %midnight_24h% | %midnight_24h_utc% |",
+        regular: "**Location:** %city%\n**Date:** %MMMM% %DD%, %YYYY%\n\n| Prayer | Time | Time (UTC) |\n|--------|------|-------------|\n| Fajr | %fajr% | %fajr_utc% |\n| Sunrise | %sunrise% | %sunrise_utc% |\n| Dhuhr | %dhuhr% | %dhuhr_utc% |\n| Asr | %asr% | %asr_utc% |\n| Maghrib | %maghrib% | %maghrib_utc% |\n| Isha | %isha% | %isha_utc% |\n| Midnight | %midnight% | %midnight_utc% |",
+        "24h": "**Location:** %city%\n**Date:** %MMMM% %DD%, %YYYY%\n\n| Prayer | Time | Time (UTC) |\n|--------|------|-------------|\n| Fajr | %fajr_24h% | %fajr_24h_utc% |\n| Sunrise | %sunrise_24h% | %sunrise_24h_utc% |\n| Dhuhr | %dhuhr_24h% | %dhuhr_24h_utc% |\n| Asr | %asr_24h% | %asr_24h_utc% |\n| Maghrib | %maghrib_24h% | %maghrib_24h_utc% |\n| Isha | %isha_24h% | %isha_24h_utc% |\n| Midnight | %midnight_24h% | %midnight_24h_utc% |",
     },
     checklist: {
-        regular: "**Date:** %MMMM% %DD%, %YYYY%\n**Location:** %city%\n\n- [ ] Fajr: %fajr%\n- [ ] Sunrise: %sunrise%\n- [ ] Dhuhr: %dhuhr%\n- [ ] Asr: %asr%\n- [ ] Maghrib: %maghrib%\n- [ ] Isha: %isha%\n- [ ] Midnight: %midnight%",
-        "24h": "**Date:** %MMMM% %DD%, %YYYY%\n**Location:** %city%\n\n- [ ] Fajr: %fajr_24h%\n- [ ] Sunrise: %sunrise_24h%\n- [ ] Dhuhr: %dhuhr_24h%\n- [ ] Asr: %asr_24h%\n- [ ] Maghrib: %maghrib_24h%\n- [ ] Isha: %isha_24h%\n- [ ] Midnight: %midnight_24h%",
+        regular: "**Location:** %city%\n**Date:** %MMMM% %DD%, %YYYY%\n\n- [ ] Fajr: %fajr%\n- [ ] Sunrise: %sunrise%\n- [ ] Dhuhr: %dhuhr%\n- [ ] Asr: %asr%\n- [ ] Maghrib: %maghrib%\n- [ ] Isha: %isha%\n- [ ] Midnight: %midnight%",
+        "24h": "**Location:** %city%\n**Date:** %MMMM% %DD%, %YYYY%\n\n- [ ] Fajr: %fajr_24h%\n- [ ] Sunrise: %sunrise_24h%\n- [ ] Dhuhr: %dhuhr_24h%\n- [ ] Asr: %asr_24h%\n- [ ] Maghrib: %maghrib_24h%\n- [ ] Isha: %isha_24h%\n- [ ] Midnight: %midnight_24h%",
     },
     simple: {
-        regular: "**Date:** %MMMM% %DD%, %YYYY%\n**Location:** %city%\n\nFajr: %fajr%\nSunrise: %sunrise%\nDhuhr: %dhuhr%\nAsr: %asr%\nMaghrib: %maghrib%\nIsha: %isha%\nMidnight: %midnight%",
-        "24h": "**Date:** %MMMM% %DD%, %YYYY%\n**Location:** %city%\n\nFajr: %fajr_24h%\nSunrise: %sunrise_24h%\nDhuhr: %dhuhr_24h%\nAsr: %asr_24h%\nMaghrib: %maghrib_24h%\nIsha: %isha_24h%\nMidnight: %midnight_24h%",
+        regular: "**Location:** %city%\n**Date:** %MMMM% %DD%, %YYYY%\n\nFajr: %fajr%\nSunrise: %sunrise%\nDhuhr: %dhuhr%\nAsr: %asr%\nMaghrib: %maghrib%\nIsha: %isha%\nMidnight: %midnight%",
+        "24h": "**Location:** %city%\n**Date:** %MMMM% %DD%, %YYYY%\n\nFajr: %fajr_24h%\nSunrise: %sunrise_24h%\nDhuhr: %dhuhr_24h%\nAsr: %asr_24h%\nMaghrib: %maghrib_24h%\nIsha: %isha_24h%\nMidnight: %midnight_24h%",
     },
 };
 
@@ -23,7 +23,6 @@ export async function fetchPrayerTimes(settings: PrayerTimesSettings): Promise<s
         includePrayerNames,
         includeUtcTime,
         utcOffset,
-        useCustomTemplate,
         selectedPreset,
         template,
         use24HourFormat,
@@ -91,12 +90,12 @@ export async function fetchPrayerTimes(settings: PrayerTimesSettings): Promise<s
     });
     
     // Determine which template to use
-    let templateToUse = useCustomTemplate 
+    let templateToUse = selectedPreset === "custom" 
         ? template 
         : getPresetTemplate(selectedPreset, use24HourFormat, includeUtcTime, showDate, showLocation);
     
     // Filter to only include selected prayers if using custom template
-    if (useCustomTemplate) {
+    if (selectedPreset === "custom") {
         // Custom logic for filtering prayers in custom templates would go here if needed
     }
     
@@ -133,14 +132,14 @@ function getPresetTemplate(preset: string, use24HourFormat: boolean, includeUtc:
         // For other formats, no special handling needed as placeholders will be replaced with empty strings
     }
     
-    // Remove date line if not showing date
-    if (!showDate) {
-        template = template.replace(/\*\*Date:\*\* %MMMM% %DD%, %YYYY%\n/g, "");
-    }
-    
     // Remove location line if not showing location
     if (!showLocation) {
         template = template.replace(/\*\*Location:\*\* %city%\n/g, "");
+    }
+    
+    // Remove date line if not showing date
+    if (!showDate) {
+        template = template.replace(/\*\*Date:\*\* %MMMM% %DD%, %YYYY%\n/g, "");
     }
     
     return template;
