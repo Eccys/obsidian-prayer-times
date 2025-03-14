@@ -20,18 +20,16 @@ export default class PrayerTimesSettingTab extends PluginSettingTab {
             .template-container {
                 position: relative;
                 width: 100%;
-                max-width: 100%;
             }
             .template-textarea {
                 width: 100%;
-                min-height: 80px;
-                resize: both;
+                min-height: 120px;
+                resize: vertical;
                 padding-right: 30px !important;
                 white-space: pre;
                 overflow-x: auto;
-                font-family: monospace;
+                font-family: var(--font-monospace);
                 box-sizing: border-box;
-                min-width: 500px;
             }
             .prayer-template-textarea {
                 min-height: 40px !important;
@@ -168,16 +166,11 @@ export default class PrayerTimesSettingTab extends PluginSettingTab {
 
             const mainTemplateContainer = document.createElement('div');
             mainTemplateContainer.className = 'template-container';
-            mainTemplateContainer.style.width = '100%';
             
-            // Make the setting control take full width
-            mainTemplateSetting.controlEl.style.maxWidth = '100%';
-            mainTemplateSetting.controlEl.style.width = '100%';
-            mainTemplateSetting.settingEl.style.flexDirection = 'column';
-            mainTemplateSetting.settingEl.style.alignItems = 'flex-start';
-            mainTemplateSetting.settingEl.style.width = '100%';
-            mainTemplateSetting.controlEl.style.marginTop = '8px';
             mainTemplateSetting.controlEl.appendChild(mainTemplateContainer);
+            mainTemplateSetting.settingEl.style.display = "block";
+            mainTemplateSetting.controlEl.style.display = "block";
+            mainTemplateSetting.controlEl.style.width = "100%";
 
             const mainTemplateTextarea = document.createElement('textarea');
             mainTemplateTextarea.className = 'template-textarea';
