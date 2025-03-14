@@ -73,7 +73,6 @@ export default class PrayerTimesPlugin extends Plugin {
             .replace(/%MMM%/g, date.toLocaleString('default', { month: 'short' }))
             .replace(/%MMMM%/g, date.toLocaleString('default', { month: 'long' }));
             
-        console.log(`Processed path: "${path}" → "${processedPath}"`);
         return processedPath;
     }
     
@@ -132,18 +131,17 @@ export default class PrayerTimesPlugin extends Plugin {
                 }
                 
                 await vault.modify(existingFile, content);
-                console.log(`Updated existing file: ${filePath}`);
+                new Notice("Prayer times updated successfully.");
             } else {
                 // Create parent folders if they don't exist
                 if (filePath.includes('/')) {
                     const folderPath = filePath.substring(0, filePath.lastIndexOf('/'));
                     if (!vault.getAbstractFileByPath(folderPath)) {
                         await vault.createFolder(folderPath);
-                        console.log(`Created folder: ${folderPath}`);
                     }
                 }
                 await vault.create(filePath, content);
-                console.log(`Created new file: ${filePath}`);
+                new Notice(`Prayer times file created: ${filePath}`);
             }
         } catch (error) {
             console.error(`Error handling file ${filePath}:`, error);
