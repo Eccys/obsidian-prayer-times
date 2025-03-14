@@ -21,23 +21,13 @@ export default class PrayerTimesPlugin extends Plugin {
         // Handle fetch on note open
         this.registerEvent(
             this.app.workspace.on("file-open", async (file) => {
-                if (!file) return;
+                if (!file || !this.settings.fetchOnNoteOpen) return;
                 
-                // For dedicated prayer times file
-                if (this.settings.outputLocation === "dedicated" && 
-                    this.settings.fetchOnNoteOpen && 
-                    file.name === "Prayer Times.md") {
+                // Process the path with date placeholders and check if it matches the current file
+                const processedPath = this.processPathPlaceholders(this.settings.outputLocation);
+                
+                if (file.path === processedPath) {
                     await this.updatePrayerTimes();
-                }
-                
-                // For daily notes
-                if (this.settings.outputLocation === "daily") {
-                    const today = window.moment().format(this.settings.dailyNoteFormat);
-                    const dailyNoteFilename = `${today}.md`;
-                    
-                    if (file.name === dailyNoteFilename && this.settings.fetchOnNoteOpen) {
-                        await this.updatePrayerTimes();
-                    }
                 }
             })
         );
@@ -49,63 +39,79 @@ export default class PrayerTimesPlugin extends Plugin {
         });
     }
 
-    async updatePrayerTimes() {
+    /**
+     * Updates the prayer times for the specified date
+     */
+    async updatePrayerTimes(): Promise<void> {
+        const outputPath = this.processPathPlaceholders(this.settings.outputLocation);
+        
         try {
-            const content = await fetchPrayerTimes(this.settings);
-            
-            if (this.settings.outputLocation === "dedicated") {
-                await this.updateDedicatedFile(content);
-            } else {
-                await this.updateDailyNote(content);
-            }
-
-            new Notice("Prayer times updated successfully!");
+            const prayerTimesContent = await fetchPrayerTimes(this.settings);
+            await this.updateCustomFile(outputPath, prayerTimesContent);
         } catch (error) {
-            console.error("Failed to fetch prayer times:", error);
-            new Notice("Failed to fetch prayer times. Check the console for details.");
+            console.error(`Failed to update prayer times: ${error}`);
+            new Notice(`Prayer Times Plugin: Failed to update prayer times. ${error}`);
         }
     }
     
-    async updateDedicatedFile(content: string) {
-        const filePath = "Prayer Times.md";
-        const vault = this.app.vault;
-        const existingFile = vault.getAbstractFileByPath(filePath);
-
-        if (existingFile instanceof TFile) {
-            await vault.modify(existingFile, content);
-        } else {
-            await vault.create(filePath, content);
-        }
-    }
-    
-    async updateDailyNote(content: string) {
-        const vault = this.app.vault;
-        const today = window.moment().format(this.settings.dailyNoteFormat);
-        const dailyNoteFilePath = `${today}.md`;
-        const sectionHeading = this.settings.sectionHeading;
+    // Process date placeholders in file paths
+    processPathPlaceholders(path: string): string {
+        if (!path) return "Prayer Times.md";
         
-        // Check if the daily note exists
-        let dailyNote = vault.getAbstractFileByPath(dailyNoteFilePath);
+        const date = new Date();
         
-        if (dailyNote instanceof TFile) {
-            // If daily note exists, update it
-            let existingContent = await vault.read(dailyNote);
+        // Replace date placeholders in path
+        let processedPath = path
+            .replace(/%YYYY%/g, date.getFullYear().toString())
+            .replace(/%YY%/g, date.getFullYear().toString().slice(-2))
+            .replace(/%MM%/g, (date.getMonth() + 1).toString().padStart(2, '0'))
+            .replace(/%M%/g, (date.getMonth() + 1).toString())
+            .replace(/%DD%/g, date.getDate().toString().padStart(2, '0'))
+            .replace(/%D%/g, date.getDate().toString())
+            .replace(/%ddd%/g, date.toLocaleString('default', { weekday: 'short' }))
+            .replace(/%dddd%/g, date.toLocaleString('default', { weekday: 'long' }))
+            .replace(/%MMM%/g, date.toLocaleString('default', { month: 'short' }))
+            .replace(/%MMMM%/g, date.toLocaleString('default', { month: 'long' }));
             
-            // Preserve checkbox states if template contains any checkboxes
-            if (this.settings.prayerTemplate.includes('[ ]')) {
-                // Find existing prayer times section using the configurable heading
-                const sectionRegex = new RegExp(`## ${sectionHeading}[\\s\\S]*?(?=\\n## |$)`);
-                const prayerTimesMatch = existingContent.match(sectionRegex);
-                
-                if (prayerTimesMatch) {
-                    const prayerTimesSection = prayerTimesMatch[0];
+        console.log(`Processed path: "${path}" → "${processedPath}"`);
+        return processedPath;
+    }
+    
+    // This function is now deprecated but kept for backward compatibility
+    async updateDedicatedFile(content: string) {
+        await this.updateCustomFile("Prayer Times.md", content);
+    }
+    
+    // New function to handle custom file paths with placeholder support
+    async updateCustomFile(filePath: string, content: string) {
+        const vault = this.app.vault;
+        
+        // Ensure filePath is a valid string and set default if empty
+        if (!filePath || filePath.trim() === "") {
+            filePath = "Prayer Times.md";
+            console.log("Using default file path: Prayer Times.md");
+        }
+        
+        // Add .md extension if missing
+        if (!filePath.toLowerCase().endsWith(".md")) {
+            filePath = `${filePath}.md`;
+            console.log(`Added .md extension to file path: ${filePath}`);
+        }
+        
+        try {
+            const existingFile = vault.getAbstractFileByPath(filePath);
+
+            if (existingFile instanceof TFile) {
+                // Before modifying, check if this file contains checkboxes and preserve their state
+                if (existingFile instanceof TFile && content.includes('- [ ]')) {
+                    const existingContent = await vault.read(existingFile);
                     
                     // Extract checkbox state based on prayer name from old content
                     const checkboxStates = new Map();
                     const checkboxRegex = /- \[([ xX])\] (.*?)(?=:| |$)/g;
                     let match;
                     
-                    while ((match = checkboxRegex.exec(prayerTimesSection)) !== null) {
+                    while ((match = checkboxRegex.exec(existingContent)) !== null) {
                         const isChecked = match[1].trim() !== '';
                         const prayerName = match[2].trim();
                         checkboxStates.set(prayerName, isChecked);
@@ -124,37 +130,36 @@ export default class PrayerTimesPlugin extends Plugin {
                         );
                     }
                 }
-            }
-            
-            // Process template for daily notes
-            let processedContent = this.settings.dailyTemplate.replace(/%prayers%/g, content);
-            
-            // Check if the prayer times section already exists using the configurable heading
-            const sectionRegex = new RegExp(`## ${sectionHeading}[\\s\\S]*?(?=\\n## |$)`);
-            
-            if (sectionRegex.test(existingContent)) {
-                // Replace existing prayer times section
-                existingContent = existingContent.replace(
-                    sectionRegex,
-                    `## ${sectionHeading}\n\n${processedContent}`
-                );
+                
+                await vault.modify(existingFile, content);
+                console.log(`Updated existing file: ${filePath}`);
             } else {
-                // Add prayer times section at the end
-                existingContent = `${existingContent.trim()}\n\n## ${sectionHeading}\n\n${processedContent}`;
+                // Create parent folders if they don't exist
+                if (filePath.includes('/')) {
+                    const folderPath = filePath.substring(0, filePath.lastIndexOf('/'));
+                    if (!vault.getAbstractFileByPath(folderPath)) {
+                        await vault.createFolder(folderPath);
+                        console.log(`Created folder: ${folderPath}`);
+                    }
+                }
+                await vault.create(filePath, content);
+                console.log(`Created new file: ${filePath}`);
             }
-            
-            await vault.modify(dailyNote, existingContent);
-        } else if (this.settings.autoCreateDailyNote) {
-            // Process template for daily notes
-            let processedContent = this.settings.dailyTemplate.replace(/%prayers%/g, content);
-            
-            // Create new daily note with prayer times
-            const newContent = `# ${today}\n\n## ${sectionHeading}\n\n${processedContent}`;
-            await vault.create(dailyNoteFilePath, newContent);
-        } else {
-            // If auto-create is disabled, show an error
-            throw new Error(`Daily note for ${today} doesn't exist and auto-create is disabled.`);
+        } catch (error) {
+            console.error(`Error handling file ${filePath}:`, error);
+            new Notice(`Error with file ${filePath}. Please check the console for details.`);
+            throw error;
         }
+    }
+
+    async updateDailyNote(content: string) {
+        // This method is no longer needed - we're using path placeholders instead
+        // Delegate to the new method for backward compatibility
+        const today = new Date();
+        const formattedDate = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        const dailyNotePath = `${formattedDate}.md`;
+        
+        await this.updateCustomFile(dailyNotePath, content);
     }
 
     async resetSettings() {
@@ -167,6 +172,13 @@ export default class PrayerTimesPlugin extends Plugin {
 
     async loadSettings() {
         this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+        
+        // Ensure outputLocation is valid
+        if (!this.settings.outputLocation || this.settings.outputLocation.trim() === "") {
+            this.settings.outputLocation = "Prayer Times.md";
+            await this.saveSettings();
+            console.log("Reset empty output location to default: Prayer Times.md");
+        }
     }
 
     async saveSettings() {
