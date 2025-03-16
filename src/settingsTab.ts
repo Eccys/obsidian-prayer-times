@@ -57,8 +57,8 @@ export default class PrayerTimesSettingTab extends PluginSettingTab {
                 background-color: var(--background-modifier-hover);
             }
             .template-reset:hover svg {
-                transform: rotate(90deg);
-                transition: transform 0.3s ease;
+                transform: rotate(360deg);
+                transition: transform 0.7s ease;
             }
             /* Remove all the aggressive styling */
         `;
