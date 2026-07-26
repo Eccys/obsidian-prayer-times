@@ -82,30 +82,44 @@ export default class PrayerTimesPlugin extends Plugin {
     processPathPlaceholders(path: string): string {
         if (!path) return "Prayer Times.md";
         
-        // Cache date components to avoid repeated calculations
-        const date = new Date();
-        const year = date.getFullYear();
-        const month = date.getMonth() + 1;
-        const day = date.getDate();
+        // Fast path: if there are no placeholders, return immediately
+        if (path.indexOf('%') === -1) return path;
         
-        // Create a replacement map for faster substitution
-        const replacements: Record<string, string> = {
-            '%YYYY%': year.toString(),
-            '%YY%': year.toString().slice(-2),
-            '%MM%': month.toString().padStart(2, '0'),
-            '%M%': month.toString(),
-            '%DD%': day.toString().padStart(2, '0'),
-            '%D%': day.toString(),
-            '%ddd%': date.toLocaleString('default', { weekday: 'short' }),
-            '%dddd%': date.toLocaleString('default', { weekday: 'long' }),
-            '%MMM%': date.toLocaleString('default', { month: 'short' }),
-            '%MMMM%': date.toLocaleString('default', { month: 'long' })
-        };
+        let date: Date | null = null;
+        let year: number | null = null;
+        let month: number | null = null;
+        let day: number | null = null;
         
         // Use a single regex to replace all placeholders in one pass
-        return path.replace(/%(?:YYYY|YY|MM|M|DD|D|ddd|dddd|MMM|MMMM)%/g, match => 
-            replacements[match] || match
-        );
+        return path.replace(/%(?:YYYY|YY|MM|M|DD|D|ddd|dddd|MMM|MMMM)%/g, match => {
+            // Lazy evaluate Date object
+            if (!date) {
+                date = new Date();
+                year = date.getFullYear();
+                month = date.getMonth() + 1;
+                day = date.getDate();
+            }
+
+            // Tell TypeScript that date, year, month, and day are not null here
+            const d = date as Date;
+            const y = year as number;
+            const m = month as number;
+            const da = day as number;
+
+            switch (match) {
+                case '%YYYY%': return y.toString();
+                case '%YY%': return y.toString().slice(-2);
+                case '%MM%': return m.toString().padStart(2, '0');
+                case '%M%': return m.toString();
+                case '%DD%': return da.toString().padStart(2, '0');
+                case '%D%': return da.toString();
+                case '%ddd%': return d.toLocaleString('default', { weekday: 'short' });
+                case '%dddd%': return d.toLocaleString('default', { weekday: 'long' });
+                case '%MMM%': return d.toLocaleString('default', { month: 'short' });
+                case '%MMMM%': return d.toLocaleString('default', { month: 'long' });
+                default: return match;
+            }
+        });
     }
     
     // This function is now deprecated but kept for backward compatibility
