@@ -40,8 +40,8 @@ export default class PrayerTimesPlugin extends Plugin {
                 if (!file || !this.settings.fetchOnNoteOpen) return;
                 
                 // Only process path if we really need to
-                const processedPath = this.processPathPlaceholders(this.settings.outputLocation);
-                
+                const rawProcessed = this.processPathPlaceholders(this.settings.outputLocation);
+                const processedPath = rawProcessed.toLowerCase().endsWith('.md') ? rawProcessed : `${rawProcessed}.md`;
                 if (file.path === processedPath) {
                     this.updatePrayerTimes();
                 }
@@ -182,8 +182,13 @@ export default class PrayerTimesPlugin extends Plugin {
                 // Create parent folders if they don't exist
                 if (filePath.includes('/')) {
                     const folderPath = filePath.substring(0, filePath.lastIndexOf('/'));
-                    if (!vault.getAbstractFileByPath(folderPath)) {
-                        await vault.createFolder(folderPath);
+                    const parts = folderPath.split('/').filter(Boolean);
+                    let currentPath = '';
+                    for (const part of parts) {
+                        currentPath = currentPath ? `${currentPath}/${part}` : part;
+                        if (!vault.getAbstractFileByPath(currentPath)) {
+                            await vault.createFolder(currentPath);
+                        }
                     }
                 }
                 await vault.create(filePath, content);
@@ -208,7 +213,7 @@ export default class PrayerTimesPlugin extends Plugin {
 
     async resetSettings() {
         // Reset to default settings
-        this.settings = Object.assign({}, DEFAULT_SETTINGS);
+        this.settings = Object.assign({}, DEFAULT_SETTINGS, { includePrayerNames: [...DEFAULT_SETTINGS.includePrayerNames] });
         await this.saveSettings();
         // Show confirmation notice
         new Notice("Prayer Times settings reset to defaults.");
@@ -229,4 +234,5 @@ export default class PrayerTimesPlugin extends Plugin {
         await this.saveData(this.settings);
     }
 }
+
 
