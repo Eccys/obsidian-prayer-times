@@ -30,7 +30,7 @@ export async function fetchPrayerTimes(settings: PrayerTimesSettings): Promise<s
         showLocation,
     } = settings;
 
-    const apiUrl = `https://api.aladhan.com/v1/timingsByCity?city=${encodeURIComponent(city)}&country=&method=2`;
+    const apiUrl = `https://api.aladhan.com/v1/timingsByCity?city=${encodeURIComponent(city)}&country=&method=${settings.method ?? 2}`;
     const response = await requestUrl({ url: apiUrl });
     if (response.status !== 200) throw new Error(`API request failed with status ${response.status}`);
 
@@ -38,7 +38,8 @@ export async function fetchPrayerTimes(settings: PrayerTimesSettings): Promise<s
     if (!data || !data.data || !data.data.date) throw new Error("Invalid data received from API");
 
     const rawDate = data.data.date.readable;
-    const date = new Date(`${rawDate} ${data.data.timings.Fajr}`); // Using Fajr time to get a complete date object
+    const cleanFajr = String(data.data.timings.Fajr).split(" ")[0];
+    const date = new Date(`${rawDate} ${cleanFajr}`); // Using Fajr time to get a complete date object
     
     // Extract date parts for placeholders
     const day = date.getDate();
@@ -70,9 +71,23 @@ export async function fetchPrayerTimes(settings: PrayerTimesSettings): Promise<s
     placeholders.set('%city%', city);
     
     // Add prayer-specific placeholders
+    const offsetMap: Record<string, number> = {
+        fajr: settings.offsetFajr || 0,
+        sunrise: settings.offsetSunrise || 0,
+        dhuhr: settings.offsetDhuhr || 0,
+        asr: settings.offsetAsr || 0,
+        maghrib: settings.offsetMaghrib || 0,
+        isha: settings.offsetIsha || 0,
+        midnight: settings.offsetMidnight || 0,
+    };
+
     Object.entries(allPrayerTimes).forEach(([prayer, time]) => {
         const prayerKey = prayer.toLowerCase();
-        const timeObj = new Date(`${rawDate} ${time}`);
+        const cleanTime = String(time).split(" ")[0];
+        const timeObj = new Date(`${rawDate} ${cleanTime}`);
+        if (offsetMap[prayerKey]) {
+            timeObj.setMinutes(timeObj.getMinutes() + offsetMap[prayerKey]);
+        }
         
         // Store both 12h and 24h formats
         placeholders.set(`%${prayerKey}%`, formatTime(timeObj, false));
@@ -153,3 +168,4 @@ function formatTime(date: Date, use24h: boolean): string {
         hour12: !use24h,
     });
 }
+
