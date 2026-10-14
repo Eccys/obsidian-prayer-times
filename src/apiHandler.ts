@@ -118,12 +118,13 @@ export async function fetchPrayerTimes(settings: PrayerTimesSettings): Promise<s
         const allPrayerKeys = Object.keys(allPrayerTimes).map(k => k.toLowerCase());
         const excludedKeys = allPrayerKeys.filter(k => !includedSet.has(k));
         if (excludedKeys.length > 0) {
+            const escapeRegex = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
             const excludedPattern = new RegExp(
-                `%(?:${excludedKeys.map(k => k.replace(/[.*+?^=!:${}()|[\\]\\/\\\\]/g, "\\$&")).join("|")})(?:_24h)?(?:_utc)?%`,
+                `%(?:${excludedKeys.map(escapeRegex).join("|")})(?:_24h)?(?:_utc)?%`,
                 "i"
             );
             const includedPattern = new RegExp(
-                `%(?:${includedPrayers.map(k => k.replace(/[.*+?^=!:${}()|[\\]\\/\\\\]/g, "\\$&")).join("|")})(?:_24h)?(?:_utc)?%`,
+                `%(?:${includedPrayers.map(escapeRegex).join("|")})(?:_24h)?(?:_utc)?%`,
                 "i"
             );
             templateToUse = templateToUse
@@ -137,7 +138,7 @@ export async function fetchPrayerTimes(settings: PrayerTimesSettings): Promise<s
     let content = templateToUse;
     for (const [key, value] of placeholders.entries()) {
         const regex = new RegExp(key.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1"), 'g');
-        content = content.replace(regex, value);
+        content = content.replace(regex, () => value);
     }
     
     return content;
