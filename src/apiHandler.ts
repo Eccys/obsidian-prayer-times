@@ -110,10 +110,10 @@ export async function fetchPrayerTimes(settings: PrayerTimesSettings): Promise<s
         : getPresetTemplate(selectedPreset, use24HourFormat, includeUtcTime, showDate, showLocation);
     
     // Filter to only include selected prayers when includePrayerNames is configured
-    const includedPrayers = (includePrayerNames ?? [])
-        .map(p => p.trim().toLowerCase())
-        .filter(Boolean);
-    if (includedPrayers.length > 0) {
+    if (Array.isArray(includePrayerNames)) {
+        const includedPrayers = includePrayerNames
+            .map(p => p.trim().toLowerCase())
+            .filter(Boolean);
         const includedSet = new Set(includedPrayers);
         const allPrayerKeys = Object.keys(allPrayerTimes).map(k => k.toLowerCase());
         const excludedKeys = allPrayerKeys.filter(k => !includedSet.has(k));
@@ -123,23 +123,23 @@ export async function fetchPrayerTimes(settings: PrayerTimesSettings): Promise<s
                 `%(?:${excludedKeys.map(escapeRegex).join("|")})(?:_24h)?(?:_utc)?%`,
                 "i"
             );
-            const includedPattern = new RegExp(
-                `%(?:${includedPrayers.map(escapeRegex).join("|")})(?:_24h)?(?:_utc)?%`,
-                "i"
-            );
+            const includedPattern = includedPrayers.length > 0
+                ? new RegExp(
+                    `%(?:${includedPrayers.map(escapeRegex).join("|")})(?:_24h)?(?:_utc)?%`,
+                    "i"
+                )
+                : null;
             templateToUse = templateToUse
                 .split("\n")
-                .filter(line => !(excludedPattern.test(line) && !includedPattern.test(line)))
+                .filter(line => !(excludedPattern.test(line) && !(includedPattern && includedPattern.test(line))))
                 .join("\n");
         }
     }
     
-    // Apply all placeholders to the template
-    let content = templateToUse;
-    for (const [key, value] of placeholders.entries()) {
-        const regex = new RegExp(key.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1"), 'g');
-        content = content.replace(regex, () => value);
-    }
+    // Apply all placeholders to the template in a single pass
+    const content = templateToUse.replace(/%[a-zA-Z0-9_]+%/g, match =>
+        placeholders.has(match) ? placeholders.get(match)! : match
+    );
     
     return content;
 }
