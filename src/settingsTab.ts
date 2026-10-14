@@ -67,12 +67,12 @@ export default class PrayerTimesSettingTab extends PluginSettingTab {
         // General settings (no heading)
         new Setting(containerEl)
             .setName("Prayers to include")
-            .setDesc("Comma separated list of prayers to include (used in custom templates)")
+            .setDesc("Comma separated list of prayers to include")
             .addText((text) => text
                 .setPlaceholder("Fajr, Sunrise, Dhuhr, Asr, Maghrib, Isha")
                 .setValue(this.plugin.settings.includePrayerNames.join(", "))
                 .onChange(async (value) => {
-                    this.plugin.settings.includePrayerNames = value.split(",").map((prayer) => prayer.trim());
+                    this.plugin.settings.includePrayerNames = value.split(",").map((prayer) => prayer.trim()).filter(Boolean);
                     await this.plugin.saveSettings();
                 })
             );
@@ -251,23 +251,24 @@ export default class PrayerTimesSettingTab extends PluginSettingTab {
                         });
                 });
 
-            // Only show UTC offset if UTC time is enabled
-            if (this.plugin.settings.includeUtcTime) {
-                new Setting(containerEl)
-                    .setName("UTC Offset")
-                    .setDesc("Specify the UTC offset to calculate UTC time")
-                    .addDropdown((dropdown) => {
-                        for (let i = -12; i <= 14; i++) {
-                            const offsetString = i >= 0 ? `+${i}` : `${i}`;
-                            dropdown.addOption(i.toString(), `UTC${offsetString}`);
-                        }
-                        dropdown.setValue(this.plugin.settings.utcOffset.toString())
-                            .onChange(async (value) => {
-                                this.plugin.settings.utcOffset = parseInt(value);
-                                await this.plugin.saveSettings();
-                            });
-                    });
-            }
+        }
+
+        // Show UTC offset if UTC time is enabled or using custom template
+        if (this.plugin.settings.includeUtcTime || this.plugin.settings.selectedPreset === "custom") {
+            new Setting(containerEl)
+                .setName("UTC Offset")
+                .setDesc("Specify the UTC offset to calculate UTC time")
+                .addDropdown((dropdown) => {
+                    for (let i = -12; i <= 14; i++) {
+                        const offsetString = i >= 0 ? `+${i}` : `${i}`;
+                        dropdown.addOption(i.toString(), `UTC${offsetString}`);
+                    }
+                    dropdown.setValue(this.plugin.settings.utcOffset.toString())
+                        .onChange(async (value) => {
+                            this.plugin.settings.utcOffset = parseInt(value);
+                            await this.plugin.saveSettings();
+                        });
+                });
         }
 
         // Add reset to default button

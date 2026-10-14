@@ -93,7 +93,7 @@ export async function fetchPrayerTimes(settings: PrayerTimesSettings): Promise<s
         placeholders.set(`%${prayerKey}%`, formatTime(timeObj, false));
         placeholders.set(`%${prayerKey}_24h%`, formatTime(timeObj, true));
         
-        if (includeUtcTime) {
+        if (includeUtcTime || selectedPreset === "custom") {
             const utcTimeObj = new Date(timeObj.getTime() - utcOffset * 60 * 60 * 1000);
             placeholders.set(`%${prayerKey}_utc%`, formatTime(utcTimeObj, false));
             placeholders.set(`%${prayerKey}_24h_utc%`, formatTime(utcTimeObj, true));
@@ -109,9 +109,28 @@ export async function fetchPrayerTimes(settings: PrayerTimesSettings): Promise<s
         ? template 
         : getPresetTemplate(selectedPreset, use24HourFormat, includeUtcTime, showDate, showLocation);
     
-    // Filter to only include selected prayers if using custom template
-    if (selectedPreset === "custom") {
-        // Custom logic for filtering prayers in custom templates would go here if needed
+    // Filter to only include selected prayers when includePrayerNames is configured
+    const includedPrayers = (includePrayerNames ?? [])
+        .map(p => p.trim().toLowerCase())
+        .filter(Boolean);
+    if (includedPrayers.length > 0) {
+        const includedSet = new Set(includedPrayers);
+        const allPrayerKeys = Object.keys(allPrayerTimes).map(k => k.toLowerCase());
+        const excludedKeys = allPrayerKeys.filter(k => !includedSet.has(k));
+        if (excludedKeys.length > 0) {
+            const excludedPattern = new RegExp(
+                `%(?:${excludedKeys.map(k => k.replace(/[.*+?^=!:${}()|[\\]\\/\\\\]/g, "\\$&")).join("|")})(?:_24h)?(?:_utc)?%`,
+                "i"
+            );
+            const includedPattern = new RegExp(
+                `%(?:${includedPrayers.map(k => k.replace(/[.*+?^=!:${}()|[\\]\\/\\\\]/g, "\\$&")).join("|")})(?:_24h)?(?:_utc)?%`,
+                "i"
+            );
+            templateToUse = templateToUse
+                .split("\n")
+                .filter(line => !(excludedPattern.test(line) && !includedPattern.test(line)))
+                .join("\n");
+        }
     }
     
     // Apply all placeholders to the template
